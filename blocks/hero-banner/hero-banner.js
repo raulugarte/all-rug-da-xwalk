@@ -2,11 +2,10 @@ export default function decorate(block) {
   const rows = [...block.children];
   if (rows.length < 2) return;
 
-  // Row 0 contains the image, Row 1 contains the text content
   const imageRow = rows[0];
   const contentRow = rows[1];
 
-  // Extract the image and wrap in a picture-like container for background positioning
+  // Create image container (displayed normally, not as background)
   const img = imageRow.querySelector('img');
   if (img) {
     const bgContainer = document.createElement('div');
@@ -15,13 +14,24 @@ export default function decorate(block) {
     block.prepend(bgContainer);
   }
 
-  // Promote text content to direct child
+  // Create content area with white card overlay
   const contentDiv = contentRow.querySelector('div > div') || contentRow.querySelector('div');
   if (contentDiv) {
-    const overlay = document.createElement('div');
-    overlay.className = 'hero-banner-content';
-    overlay.append(...contentDiv.childNodes);
-    block.append(overlay);
+    const content = document.createElement('div');
+    content.className = 'hero-banner-content';
+
+    const card = document.createElement('div');
+    card.className = 'hero-banner-card';
+    card.append(...contentDiv.childNodes);
+
+    // Mark second button as secondary (outline style)
+    const buttons = card.querySelectorAll('.button');
+    if (buttons.length > 1) {
+      buttons[1].classList.add('secondary');
+    }
+
+    content.append(card);
+    block.append(content);
   }
 
   // Remove the original table rows

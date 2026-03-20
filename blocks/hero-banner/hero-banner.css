@@ -1,3 +1,4 @@
+/* Hero banner: image top, white card overlapping bottom */
 .hero-banner-container .hero-banner-wrapper {
   max-width: unset;
   padding: 0;
@@ -5,80 +6,124 @@
 
 .hero-banner {
   position: relative;
-  min-height: 480px;
   display: flex;
-  align-items: flex-end;
-  overflow: hidden;
+  flex-direction: column;
 }
 
-/* Background image layer */
+/* Image — displayed normally, not as a background overlay */
 .hero-banner .hero-banner-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+  width: 100%;
+  height: 340px;
+  overflow: hidden;
 }
 
 .hero-banner .hero-banner-bg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 50% 20%;
 }
 
-/* Text overlay */
+/* Content container — centered with negative margin for overlap */
 .hero-banner .hero-banner-content {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  max-width: calc(var(--content-max-width) + 2 * var(--content-padding));
   width: 100%;
-  margin: 0 auto;
-  padding: 40px 24px;
-  color: var(--background-color);
+  margin: -32px auto 0;
+  padding: 0 var(--content-padding) 32px;
+  box-sizing: border-box;
 }
 
-.hero-banner .hero-banner-content h1 {
-  color: var(--background-color);
-  font-size: var(--heading-font-size-xl);
-  margin-bottom: 8px;
+/* White card */
+.hero-banner .hero-banner-card {
+  background-color: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgb(4 19 33 / 18%);
+  padding: 32px;
 }
 
-.hero-banner .hero-banner-content p {
-  color: var(--background-color);
-  font-size: var(--body-font-size-l);
-  margin: 0 0 16px;
+/* Eyebrow heading — small uppercase label */
+.hero-banner .hero-banner-card h1 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #3f72b1;
+  letter-spacing: -0.32px;
+  line-height: 1.25;
+  margin: 0 0 12px;
 }
 
-/* CTA buttons */
-.hero-banner .hero-banner-content .button-container {
-  display: inline-block;
-  margin-right: 16px;
-  margin-bottom: 0;
-}
-
-.hero-banner .hero-banner-content a.button {
-  background-color: var(--background-color);
-  color: var(--link-color);
-  border: 2px solid var(--background-color);
-  border-radius: 4px;
-  padding: 12px 24px;
+/* Large subtitle */
+.hero-banner .hero-banner-card p:not(.button-container) {
+  font-size: 32px;
   font-weight: 600;
-  text-decoration: none;
+  line-height: 1;
+  letter-spacing: -0.26px;
+  color: var(--color-allianz-blue);
+  margin: 0;
 }
 
-.hero-banner .hero-banner-content a.button:hover {
+/* Button row */
+.hero-banner .hero-banner-card .button-container {
+  display: inline-block;
+  margin: 12px 8px 0 0;
+}
+
+/* Primary button — filled dark blue */
+.hero-banner .hero-banner-card a.button {
+  display: inline-flex;
+  justify-content: center;
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+  border: none;
+  border-radius: 8px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.hero-banner .hero-banner-card a.button:hover {
+  background-color: var(--color-dark-navy);
+  border-color: var(--color-dark-navy);
+}
+
+/* Secondary button — outline */
+.hero-banner .hero-banner-card a.button.secondary {
   background-color: transparent;
-  color: var(--background-color);
+  color: var(--color-allianz-blue);
+  border: 1px solid var(--color-allianz-blue);
+  padding: 15px 31px;
 }
 
+.hero-banner .hero-banner-card a.button.secondary:hover {
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+}
+
+/* Desktop */
 @media (width >= 900px) {
-  .hero-banner {
-    min-height: 560px;
+  .hero-banner .hero-banner-bg {
+    height: 480px;
   }
 
   .hero-banner .hero-banner-content {
-    padding: 60px 32px;
+    margin-top: -48px;
+    padding: 0 32px 32px;
   }
 
-  .hero-banner .hero-banner-content h1 {
-    font-size: var(--heading-font-size-xxl);
+  .hero-banner .hero-banner-card {
+    max-width: 65%;
+    padding: 40px;
+  }
+
+  .hero-banner .hero-banner-card h1 {
+    font-size: 16px;
+  }
+
+  .hero-banner .hero-banner-card p:not(.button-container) {
+    font-size: 52px;
   }
 }

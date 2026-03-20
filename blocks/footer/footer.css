@@ -1,6 +1,5 @@
 footer {
   background-color: var(--background-color);
-  font-size: var(--body-font-size-xs);
   color: var(--link-color);
 }
 
@@ -14,31 +13,33 @@ footer .footer p {
   margin: 0;
 }
 
-/* Acknowledgement — dark navy full-bleed band */
+/* Acknowledgement — dark grey full-bleed band */
 footer .footer .default-content-wrapper > p:first-child {
-  background-color: var(--color-dark-navy, #003781);
-  color: var(--color-white, #fff);
-  padding: 32px 24px;
+  background-color: var(--color-dark-grey);
+  color: var(--color-white);
+  padding: 48px 24px 32px;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   padding-left: calc(50vw - 50% + 24px);
   padding-right: calc(50vw - 50% + 24px);
-  font-size: var(--body-font-size-xs);
-  line-height: 1.6;
+  font-size: var(--body-font-size-s);
+  line-height: 1.43;
 }
 
 /* Disclaimer paragraphs */
 footer .footer .default-content-wrapper > p:nth-child(2),
 footer .footer .default-content-wrapper > p:nth-child(3) {
-  font-size: var(--body-font-size-xs);
-  line-height: 1.6;
+  font-size: var(--body-font-size-s);
+  line-height: 1.43;
   padding-top: 16px;
 }
 
+/* stylelint-disable-next-line no-descending-specificity */
 footer .footer .default-content-wrapper > p:nth-child(2) a,
 footer .footer .default-content-wrapper > p:nth-child(3) a {
   color: var(--link-color);
   font-weight: 600;
+  text-decoration: underline;
 }
 
 /* Bottom bar: copyright + legal links */
@@ -46,17 +47,18 @@ footer .footer .footer-bottom-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 32px;
+  gap: 0;
   border-top: 1px solid #c3d7e9;
   margin-top: 24px;
-  padding: 16px 0 24px;
+  padding: 32px 0;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
 footer .footer .footer-bottom-bar > p {
-  font-size: var(--body-font-size-xs);
-  font-weight: 700;
+  font-size: var(--body-font-size-m);
+  font-weight: 600;
   margin: 0;
+  margin-right: 32px;
 }
 
 /* Legal links */
@@ -66,7 +68,7 @@ footer .footer .footer-bottom-bar > ul {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 0;
 }
 
 footer .footer .footer-bottom-bar > ul li {
@@ -75,10 +77,12 @@ footer .footer .footer-bottom-bar > ul li {
 
 /* stylelint-disable-next-line no-descending-specificity */
 footer .footer .footer-bottom-bar > ul a {
+  display: inline-block;
   color: var(--link-color);
   font-size: var(--body-font-size-m);
   font-weight: 400;
   text-decoration: none;
+  margin-right: 24px;
 }
 
 footer .footer .footer-bottom-bar > ul a:hover {

@@ -3,8 +3,5 @@
     "/content/all-rug-da-xwalk/:/",
     "/content/all-rug-da-xwalk/metadata:/metadata.json",
     "/content/all-rug-da-xwalk/configuration:/.helix/config.json"
-  ],
-  "includes": [
-    "/content/all-rug-da-xwalk/"
   ]
 }

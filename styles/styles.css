@@ -333,6 +333,10 @@ main .section.dark-blue a.button:hover {
     align-items: center;
     gap: 0 32px;
   }
+
+  main .section.dark-blue.columns-actions-container h2 {
+    font-size: 40px;
+  }
 }
 
 /* light-grey section (e.g. "What care looks like") */

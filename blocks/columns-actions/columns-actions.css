@@ -30,8 +30,8 @@
 
 .columns-actions .columns-actions-text h3 {
   margin: 0 0 4px;
-  font-size: var(--heading-font-size-m);
-  font-weight: 700;
+  font-size: var(--heading-font-size-s);
+  font-weight: 600;
 }
 
 .columns-actions .columns-actions-text p {
@@ -72,7 +72,7 @@
   }
 
   .columns-actions .columns-actions-text h3 {
-    font-size: var(--heading-font-size-l);
+    font-size: 26px;
     margin-bottom: 8px;
   }
 

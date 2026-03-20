@@ -1,0 +1,82 @@
+/* The dark-blue background comes from .dark-blue section style */
+.columns-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.columns-actions .columns-actions-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.columns-actions .columns-actions-icon {
+  flex: 0 0 56px;
+  width: 56px;
+}
+
+.columns-actions .columns-actions-icon img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.columns-actions .columns-actions-text {
+  flex: 1;
+}
+
+.columns-actions .columns-actions-text h3 {
+  margin: 0 0 4px;
+  font-size: var(--heading-font-size-m);
+  font-weight: 700;
+}
+
+.columns-actions .columns-actions-text p {
+  margin: 0;
+}
+
+/* Override EDS button styling — render as plain arrow links */
+.columns-actions .columns-actions-text a:any-link {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--body-font-size-s);
+  font-weight: 600;
+  text-decoration: none;
+  color: inherit;
+}
+
+.columns-actions .columns-actions-text a::before {
+  content: "\2192";
+  margin-right: 8px;
+  font-weight: 700;
+}
+
+.columns-actions .columns-actions-text a:hover {
+  text-decoration: underline;
+}
+
+@media (width >= 900px) {
+  .columns-actions .columns-actions-icon {
+    flex: 0 0 64px;
+    width: 64px;
+  }
+
+  .columns-actions .columns-actions-icon img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .columns-actions .columns-actions-text h3 {
+    font-size: var(--heading-font-size-l);
+    margin-bottom: 8px;
+  }
+
+  .columns-actions .columns-actions-text a:any-link {
+    font-size: var(--body-font-size-m);
+  }
+}

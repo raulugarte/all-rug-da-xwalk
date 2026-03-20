@@ -1,0 +1,123 @@
+{
+  "templates": [
+    {
+      "name": "homepage",
+      "urls": [
+        "https://www.allianz.com.au"
+      ],
+      "description": "Allianz Australia homepage with insurance product offerings, promotions, and quick links",
+      "blocks": [
+        {
+          "name": "hero-banner",
+          "instances": [".parsys > .a1stage"]
+        },
+        {
+          "name": "cards-product",
+          "instances": [".parsys > .wrapper:nth-of-type(1) .multi-column-grid"]
+        },
+        {
+          "name": "columns-actions",
+          "instances": [".parsys > .wrapper:nth-of-type(2) .multi-column-grid"]
+        },
+        {
+          "name": "columns-awards",
+          "instances": [".parsys > .wrapper:nth-of-type(3) .multi-column-grid"]
+        },
+        {
+          "name": "columns-features",
+          "instances": [".parsys > .wrapper:nth-of-type(4) .multi-column-grid"]
+        },
+        {
+          "name": "cards-article",
+          "instances": [".parsys > .wrapper:nth-of-type(5) .multi-column-grid"]
+        },
+        {
+          "name": "columns-partner",
+          "instances": [".parsys > .experiencefragment:nth-of-type(2) .multi-column-grid"]
+        }
+      ],
+      "sections": [
+        {
+          "id": "section-1-hero",
+          "name": "Hero Banner",
+          "selector": ".parsys > .a1stage",
+          "style": null,
+          "blocks": ["hero-banner"],
+          "defaultContent": []
+        },
+        {
+          "id": "section-2-products",
+          "name": "Insurance Products",
+          "selector": ".parsys > .wrapper:nth-of-type(1)",
+          "style": null,
+          "blocks": ["cards-product"],
+          "defaultContent": ["h2.c-heading", "div.text .c-copy"]
+        },
+        {
+          "id": "section-3-customer",
+          "name": "Existing Customer Actions",
+          "selector": ".parsys > .wrapper:nth-of-type(2)",
+          "style": "dark-blue",
+          "blocks": ["columns-actions"],
+          "defaultContent": []
+        },
+        {
+          "id": "section-4-awards",
+          "name": "Awards Section",
+          "selector": ".parsys > .wrapper:nth-of-type(3)",
+          "style": null,
+          "blocks": ["columns-awards"],
+          "defaultContent": []
+        },
+        {
+          "id": "section-5-care",
+          "name": "What Care Looks Like",
+          "selector": ".parsys > .wrapper:nth-of-type(4)",
+          "style": "light-grey",
+          "blocks": ["columns-features"],
+          "defaultContent": ["h2.c-heading"]
+        },
+        {
+          "id": "section-6-articles",
+          "name": "Help Articles",
+          "selector": ".parsys > .wrapper:nth-of-type(5)",
+          "style": null,
+          "blocks": ["cards-article"],
+          "defaultContent": ["h2.c-heading", "div.text .c-copy", "div.link"]
+        },
+        {
+          "id": "section-7-olympic",
+          "name": "Olympic Partnership",
+          "selector": ".parsys > .experiencefragment:nth-of-type(2)",
+          "style": null,
+          "blocks": ["columns-partner"],
+          "defaultContent": []
+        },
+        {
+          "id": "section-8-hardship",
+          "name": "Financial Hardship Support",
+          "selector": ".parsys > .wrapper:nth-of-type(6)",
+          "style": "light-blue",
+          "blocks": [],
+          "defaultContent": ["h2.c-heading", "div.text .c-copy", "div.link"]
+        },
+        {
+          "id": "section-9-social",
+          "name": "Social Media Links",
+          "selector": ".parsys > .experiencefragment:nth-of-type(3)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": ["h2.c-heading", ".c-social-icon"]
+        },
+        {
+          "id": "section-10-conditions",
+          "name": "Conditions/Footnotes",
+          "selector": ".parsys > .wrapper:nth-of-type(7)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": ["h2.c-heading", ".c-list--ordered"]
+        }
+      ]
+    }
+  ]
+}

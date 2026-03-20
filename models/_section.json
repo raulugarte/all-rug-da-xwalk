@@ -33,6 +33,18 @@
             {
               "name": "Highlight",
               "value": "highlight"
+            },
+            {
+              "name": "Dark Blue",
+              "value": "dark-blue"
+            },
+            {
+              "name": "Light Grey",
+              "value": "light-grey"
+            },
+            {
+              "name": "Light Blue",
+              "value": "light-blue"
             }
           ]
         }
@@ -46,12 +58,19 @@
         "accordion",
         "button",
         "cards",
+        "cards-article",
+        "cards-product",
         "carousel",
         "columns",
+        "columns-actions",
+        "columns-awards",
+        "columns-features",
+        "columns-partner",
         "embed",
         "fragment",
         "form",
         "hero",
+        "hero-banner",
         "image",
         "quote",
         "search",

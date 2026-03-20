@@ -1,0 +1,51 @@
+{
+  "definitions": [
+    {
+      "title": "Columns Awards",
+      "id": "columns-awards",
+      "plugins": {
+        "xwalk": {
+          "page": {
+            "resourceType": "core/franklin/components/columns/v1/columns",
+            "template": {
+              "name": "Columns Awards",
+              "columns": "2",
+              "rows": "1"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "models": [
+    {
+      "id": "columns-awards",
+      "fields": [
+        {
+          "component": "text",
+          "valueType": "number",
+          "name": "columns",
+          "value": "",
+          "label": "Columns"
+        },
+        {
+          "component": "text",
+          "valueType": "number",
+          "name": "rows",
+          "value": "",
+          "label": "Rows"
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "id": "columns-awards",
+      "components": ["column-awards"]
+    },
+    {
+      "id": "column-awards",
+      "components": ["text", "image", "button", "title"]
+    }
+  ]
+}

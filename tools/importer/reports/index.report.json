@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "url": "https://www.allianz.com.au",
+  "path": "index",
+  "timestamp": "2026-03-20T00:16:03.257Z",
+  "title": "Allianz Insurance | Quotes for Car, Home, Travel, Life & more",
+  "template": "homepage",
+  "blocks": [
+    "hero-banner",
+    "cards-product",
+    "columns-actions",
+    "columns-awards",
+    "columns-features",
+    "cards-article"
+  ]
+}

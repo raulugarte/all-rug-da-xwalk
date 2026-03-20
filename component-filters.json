@@ -11,12 +11,19 @@
       "accordion",
       "button",
       "cards",
+      "cards-article",
+      "cards-product",
       "carousel",
       "columns",
+      "columns-actions",
+      "columns-awards",
+      "columns-features",
+      "columns-partner",
       "embed",
       "fragment",
       "form",
       "hero",
+      "hero-banner",
       "image",
       "quote",
       "search",
@@ -34,6 +41,18 @@
     ]
   },
   {
+    "id": "cards-article",
+    "components": [
+      "card-article"
+    ]
+  },
+  {
+    "id": "cards-product",
+    "components": [
+      "card-product"
+    ]
+  },
+  {
     "id": "cards",
     "components": [
       "card"
@@ -43,6 +62,66 @@
     "id": "carousel",
     "components": [
       "carousel-item"
+    ]
+  },
+  {
+    "id": "columns-actions",
+    "components": [
+      "column-actions"
+    ]
+  },
+  {
+    "id": "column-actions",
+    "components": [
+      "text",
+      "image",
+      "button",
+      "title"
+    ]
+  },
+  {
+    "id": "columns-awards",
+    "components": [
+      "column-awards"
+    ]
+  },
+  {
+    "id": "column-awards",
+    "components": [
+      "text",
+      "image",
+      "button",
+      "title"
+    ]
+  },
+  {
+    "id": "columns-features",
+    "components": [
+      "column-features"
+    ]
+  },
+  {
+    "id": "column-features",
+    "components": [
+      "text",
+      "image",
+      "button",
+      "title"
+    ]
+  },
+  {
+    "id": "columns-partner",
+    "components": [
+      "column-partner"
+    ]
+  },
+  {
+    "id": "column-partner",
+    "components": [
+      "text",
+      "image",
+      "button",
+      "title"
     ]
   },
   {

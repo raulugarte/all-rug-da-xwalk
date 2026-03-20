@@ -218,6 +218,13 @@ export default async function decorate(block) {
 
   const navTools = nav.querySelector('.nav-tools');
   if (navTools) {
+    // Remove button classes from tools links so they render as text links
+    navTools.querySelectorAll('.button-container').forEach((buttonContainer) => {
+      buttonContainer.classList.remove('button-container');
+      const btn = buttonContainer.querySelector('.button');
+      if (btn) btn.classList.remove('button');
+    });
+
     const search = navTools.querySelector('a[href*="search"]');
     if (search && search.textContent === '') {
       search.setAttribute('aria-label', 'Search');

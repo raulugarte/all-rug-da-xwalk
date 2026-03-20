@@ -1,20 +1,102 @@
 footer {
-  background-color: var(--light-color);
+  background-color: var(--background-color);
   font-size: var(--body-font-size-xs);
+  color: var(--link-color);
 }
 
 footer .footer > div {
   margin: auto;
   max-width: 1200px;
-  padding: 40px 24px 24px;
+  padding: 0 24px;
 }
 
 footer .footer p {
   margin: 0;
 }
 
+/* Acknowledgement — dark navy full-bleed band */
+footer .footer .default-content-wrapper > p:first-child {
+  background-color: var(--color-dark-navy, #003781);
+  color: var(--color-white, #fff);
+  padding: 32px 24px;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: calc(50vw - 50% + 24px);
+  padding-right: calc(50vw - 50% + 24px);
+  font-size: var(--body-font-size-xs);
+  line-height: 1.6;
+}
+
+/* Disclaimer paragraphs */
+footer .footer .default-content-wrapper > p:nth-child(2),
+footer .footer .default-content-wrapper > p:nth-child(3) {
+  font-size: var(--body-font-size-xs);
+  line-height: 1.6;
+  padding-top: 16px;
+}
+
+footer .footer .default-content-wrapper > p:nth-child(2) a,
+footer .footer .default-content-wrapper > p:nth-child(3) a {
+  color: var(--link-color);
+  font-weight: 600;
+}
+
+/* Bottom bar: copyright + legal links */
+footer .footer .footer-bottom-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+  border-top: 1px solid #c3d7e9;
+  margin-top: 24px;
+  padding: 16px 0 24px;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+footer .footer .footer-bottom-bar > p {
+  font-size: var(--body-font-size-xs);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Legal links */
+footer .footer .footer-bottom-bar > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+footer .footer .footer-bottom-bar > ul li {
+  padding: 0;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+footer .footer .footer-bottom-bar > ul a {
+  color: var(--link-color);
+  font-size: var(--body-font-size-m);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+footer .footer .footer-bottom-bar > ul a:hover {
+  text-decoration: underline;
+}
+
 @media (width >= 900px) {
   footer .footer > div {
-    padding: 40px 32px 24px;
+    max-width: 1264px;
+    padding: 0 32px;
+  }
+
+  footer .footer .default-content-wrapper > p:first-child {
+    padding-left: calc(50vw - 50% + 32px);
+    padding-right: calc(50vw - 50% + 32px);
+  }
+
+  footer .footer .footer-bottom-bar {
+    flex-wrap: nowrap;
   }
 }

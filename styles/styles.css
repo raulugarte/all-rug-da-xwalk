@@ -1,41 +1,53 @@
 /*
- * Copyright 2020 Adobe. All rights reserved.
- * This file is licensed to you under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License. You may obtain a copy
- * of the License at http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
- * OF ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
+ * Allianz Australia - Edge Delivery Services
+ * Design system extracted from https://www.allianz.com.au
  */
 
 :root {
-  /* colors */
-  --background-color: white;
-  --light-color: #f8f8f8;
-  --dark-color: #505050;
-  --text-color: #131313;
-  --link-color: #3b63fb;
-  --link-hover-color: #1d3ecf;
-  --overlay-background-color:lightgrey;
+  /* colors - Allianz brand */
+  --color-allianz-blue: #003781;
+  --color-dark-navy: #122b54;
+  --color-light-teal: #f1f9fa;
+  --color-light-blue: #f0f7fc;
+  --color-dark-grey: #5b5b5b;
+  --color-medium-grey: #414141;
+  --color-white: #fff;
+
+  /* semantic colors */
+  --background-color: var(--color-white);
+  --text-color: var(--color-allianz-blue);
+  --link-color: var(--color-allianz-blue);
+  --link-hover-color: var(--color-dark-navy);
+  --light-color: var(--color-light-teal);
+  --dark-color: var(--color-dark-navy);
+  --overlay-background-color: var(--color-light-blue);
 
   /* fonts */
-  --body-font-family: roboto, roboto-fallback, sans-serif;
-  --heading-font-family: roboto-condensed, roboto-condensed-fallback, sans-serif;
+  --body-font-family: 'Allianz Neo', allianz-neo-fallback, sans-serif;
+  --heading-font-family: 'Allianz Neo', allianz-neo-fallback, sans-serif;
 
   /* body sizes */
-  --body-font-size-m: 22px;
-  --body-font-size-s: 19px;
-  --body-font-size-xs: 17px;
+  --body-font-size-m: 16px;
+  --body-font-size-s: 14px;
+  --body-font-size-xs: 12px;
 
-  /* heading sizes */
-  --heading-font-size-xxl: 55px;
-  --heading-font-size-xl: 44px;
-  --heading-font-size-l: 34px;
-  --heading-font-size-m: 27px;
-  --heading-font-size-s: 24px;
-  --heading-font-size-xs: 22px;
+  /* heading sizes (mobile-first) */
+  --heading-font-size-xxl: 32px;
+  --heading-font-size-xl: 28px;
+  --heading-font-size-l: 24px;
+  --heading-font-size-m: 20px;
+  --heading-font-size-s: 18px;
+  --heading-font-size-xs: 16px;
+
+  /* spacing */
+  --section-padding: 48px;
+  --content-max-width: 1200px;
+  --content-padding: 16px;
+
+  /* buttons */
+  --button-border-radius: 8px;
+  --button-padding: 10px 22px;
+  --button-transition: transform 0.3s ease;
 
   /* nav heights */
   --nav-height: 64px;
@@ -43,33 +55,28 @@
   --header-height: var(--nav-height);
 }
 
-/* fallback fonts */
+/* fallback font */
 @font-face {
-  font-family: roboto-condensed-fallback;
-  size-adjust: 88.82%;
-  src: local('Arial');
-}
-
-@font-face {
-  font-family: roboto-fallback;
-  size-adjust: 99.529%;
+  font-family: allianz-neo-fallback;
+  size-adjust: 100%;
   src: local('Arial');
 }
 
 @media (width >= 900px) {
   :root {
-    /* body sizes */
-    --body-font-size-m: 18px;
-    --body-font-size-s: 16px;
-    --body-font-size-xs: 14px;
-
-    /* heading sizes */
-    --heading-font-size-xxl: 45px;
+    /* heading sizes - desktop */
+    --heading-font-size-xxl: 40px;
     --heading-font-size-xl: 36px;
-    --heading-font-size-l: 28px;
-    --heading-font-size-m: 22px;
+    --heading-font-size-l: 30px;
+    --heading-font-size-m: 24px;
     --heading-font-size-s: 20px;
     --heading-font-size-xs: 18px;
+
+    /* spacing - desktop */
+    --content-padding: 32px;
+
+    /* two-row header on desktop */
+    --nav-height: 110px;
   }
 }
 
@@ -80,7 +87,7 @@ body {
   color: var(--text-color);
   font-family: var(--body-font-family);
   font-size: var(--body-font-size-m);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 body.appear {
@@ -107,6 +114,7 @@ footer .footer[data-block-status="loaded"] {
   }
 }
 
+/* headings */
 h1,
 h2,
 h3,
@@ -117,8 +125,9 @@ h6 {
   margin-bottom: 0.25em;
   font-family: var(--heading-font-family);
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
   scroll-margin: 40px;
+  color: var(--text-color);
 }
 
 h1 { font-size: var(--heading-font-size-xxl); }
@@ -167,6 +176,8 @@ a:any-link {
   color: var(--link-color);
   text-decoration: none;
   overflow-wrap: break-word;
+  font-weight: 600;
+  transition: color 0.2s ease;
 }
 
 a:hover {
@@ -181,42 +192,59 @@ button {
   display: inline-block;
   max-width: 100%;
   margin: 12px 0;
-  border: 2px solid transparent;
-  border-radius: 2.4em;
-  padding: 0.5em 1.2em;
+  border: 1px solid var(--color-allianz-blue);
+  border-radius: var(--button-border-radius);
+  padding: var(--button-padding);
   font-family: var(--body-font-family);
   font-style: normal;
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: 700;
+  font-size: var(--body-font-size-m);
+  line-height: 1.5;
   text-align: center;
   text-decoration: none;
-  background-color: var(--link-color);
-  color: var(--background-color);
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: var(--button-transition);
 }
 
 a.button:hover,
 a.button:focus,
 button:hover,
 button:focus {
-  background-color: var(--link-hover-color);
+  background-color: var(--color-dark-navy);
+  border-color: var(--color-dark-navy);
   cursor: pointer;
+}
+
+a.button:focus,
+button:focus {
+  outline: 2px solid var(--color-allianz-blue);
+  outline-offset: 2px;
 }
 
 button:disabled,
 button:disabled:hover {
   background-color: var(--light-color);
+  border-color: var(--light-color);
+  color: var(--color-medium-grey);
   cursor: unset;
 }
 
 a.button.secondary,
 button.secondary {
-  background-color: unset;
-  border: 2px solid currentcolor;
-  color: var(--text-color);
+  background-color: transparent;
+  border: 1px solid var(--color-allianz-blue);
+  color: var(--color-allianz-blue);
+}
+
+a.button.secondary:hover,
+button.secondary:hover {
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
 }
 
 main img {
@@ -242,9 +270,9 @@ main > .section {
 }
 
 main > .section > div {
-  max-width: 1200px;
+  max-width: var(--content-max-width);
   margin: auto;
-  padding: 0 24px;
+  padding: 0 var(--content-padding);
 }
 
 main > .section:first-of-type {
@@ -253,14 +281,138 @@ main > .section:first-of-type {
 
 @media (width >= 900px) {
   main > .section > div {
-    padding: 0 32px;
+    padding: 0 var(--content-padding);
   }
 }
 
-/* section metadata */
+/* section metadata variants */
 main .section.light,
 main .section.highlight {
   background-color: var(--light-color);
   margin: 0;
-  padding: 40px 0;
+  padding: var(--section-padding) 0;
+}
+
+/* dark-blue section (e.g. "Already an Allianz customer?") */
+main .section.dark-blue {
+  background-color: var(--color-dark-navy);
+  color: var(--color-white);
+  margin: 0;
+  padding: var(--section-padding) 0;
+}
+
+main .section.dark-blue h1,
+main .section.dark-blue h2,
+main .section.dark-blue h3,
+main .section.dark-blue h4,
+main .section.dark-blue h5,
+main .section.dark-blue h6 {
+  color: var(--color-white);
+}
+
+main .section.dark-blue a:any-link {
+  color: var(--color-white);
+}
+
+main .section.dark-blue a.button:any-link {
+  background-color: var(--color-white);
+  color: var(--color-dark-navy);
+  border-color: var(--color-white);
+}
+
+main .section.dark-blue a.button:hover {
+  background-color: var(--color-light-teal);
+  border-color: var(--color-light-teal);
+}
+
+/* Two-column layout: heading left, block right on desktop */
+@media (width >= 900px) {
+  main .section.dark-blue.columns-actions-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 0 32px;
+  }
+}
+
+/* light-grey section (e.g. "What care looks like") */
+main .section.light-grey {
+  background-color: var(--color-light-teal);
+  margin: 0;
+  padding: var(--section-padding) 0;
+}
+
+/* light-blue section (e.g. "Financial hardship support") */
+main .section.light-blue {
+  background-color: var(--color-light-teal);
+  margin: 0;
+  padding: var(--section-padding) 0;
+}
+
+/* Arrow link style for light-blue section CTAs (not buttons) */
+main .section.light-blue .button-container a.button {
+  all: unset;
+  cursor: pointer;
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: var(--body-font-size-m);
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
+main .section.light-blue .button-container a.button::before {
+  content: "\2192";
+  margin-right: 8px;
+}
+
+main .section.light-blue .button-container a.button:hover {
+  text-decoration: underline;
+  background: none;
+}
+
+/* "More products" pill-tag links in cards-product section */
+.section.cards-product-container > .default-content-wrapper:last-child h3 {
+  margin-bottom: 16px;
+}
+
+.section.cards-product-container > .default-content-wrapper:last-child ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.section.cards-product-container > .default-content-wrapper:last-child ul li {
+  display: flex;
+  padding: 0;
+}
+
+.section.cards-product-container > .default-content-wrapper:last-child ul li a {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 22px;
+  border: 1px solid var(--link-color);
+  border-radius: 8px;
+  color: var(--link-color);
+  background: transparent;
+  font-size: var(--body-font-size-m);
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.section.cards-product-container > .default-content-wrapper:last-child ul li a::before {
+  content: "\2192";
+  margin-right: 8px;
+  font-weight: 700;
+}
+
+.section.cards-product-container > .default-content-wrapper:last-child ul li a:hover {
+  background-color: var(--link-color);
+  color: #fff;
 }

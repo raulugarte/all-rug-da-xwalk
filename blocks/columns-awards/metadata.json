@@ -1,0 +1,39 @@
+{
+  "variantName": "columns-awards",
+  "baseBlock": "columns",
+  "version": "1.0.0",
+  "created": "2026-03-18T12:59:00.000Z",
+  "sourceContext": {
+    "originUrl": "https://www.allianz.com.au",
+    "originPage": "Allianz Australia homepage",
+    "blockPosition": "middle"
+  },
+  "visualCharacteristics": {
+    "colorScheme": "light",
+    "density": "spacious",
+    "purpose": "awards-showcase",
+    "imagePattern": "large"
+  },
+  "contentPattern": {
+    "structure": "h2 + paragraph + link | award-badges-image",
+    "buttonCount": 0,
+    "imageCount": 1
+  },
+  "reuseGuidance": {
+    "suitableFor": [
+      "award/recognition sections",
+      "text + badge image layouts",
+      "certification showcase sections"
+    ],
+    "notSuitableFor": [
+      "product navigation layouts",
+      "dark-themed action panels",
+      "icon-only feature grids"
+    ]
+  },
+  "usage": {
+    "pagesUsing": ["content/index"],
+    "reuseCount": 1,
+    "lastUsed": "2026-03-18T12:59:00.000Z"
+  }
+}

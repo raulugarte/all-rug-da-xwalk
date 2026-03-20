@@ -1,0 +1,47 @@
+/* columns-features: 4-column icon + text feature highlights */
+
+/* Light-grey background comes from .light-grey section style */
+
+.columns-features > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.columns-features > div > div p {
+  margin: 0;
+}
+
+/* Icon sizing — wide SVGs, constrain by height only */
+.columns-features > div > div p:first-child {
+  line-height: 0;
+  margin-bottom: 16px;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.columns-features > div > div p:first-child img {
+  height: 64px;
+  width: auto;
+  display: block;
+}
+
+/* Feature description text */
+.columns-features > div > div p:last-child {
+  font-size: var(--body-font-size-m);
+  line-height: 1.5;
+  color: var(--text-color);
+}
+
+@media (width >= 900px) {
+  .columns-features > div {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+  }
+
+  .columns-features > div > div p:first-child,
+  .columns-features > div > div p:first-child img {
+    height: 72px;
+  }
+}

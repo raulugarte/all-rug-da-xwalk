@@ -1,0 +1,9 @@
+{
+  "type": "xwalk",
+  "libraryUrl": "https://main--sta-xwalk-boilerplate--aemysites.aem.page/tools/sidekick/library.json",
+  "aemSitePath": "/content/all-rug-da-xwalk",
+  "aemAssetsFolderPath": "/content/dam/all-rug-da-xwalk",
+  "aemSiteName": "all-rug-da-xwalk",
+  "aemSiteTitle": "all-rug-da-xwalk",
+  "contentHostUrl": "https://author-p130407-e1279066.adobeaemcloud.com"
+}

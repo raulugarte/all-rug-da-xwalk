@@ -1,0 +1,107 @@
+/* cards-product: Product cards with icon, heading, sub-links, and CTA */
+.cards-product > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+@media (width >= 600px) {
+  .cards-product > ul {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+.cards-product > ul > li {
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Icon (SVG) — display at natural size, ~80px */
+.cards-product .cards-product-card-image {
+  line-height: 0;
+  padding: 0 0 16px;
+}
+
+.cards-product .cards-product-card-image img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+/* Text body */
+.cards-product .cards-product-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Product heading link */
+.cards-product .cards-product-card-body h3 {
+  margin: 0 0 16px;
+  font-size: var(--heading-font-size-l);
+  font-weight: 700;
+}
+
+/* All link base styles grouped together */
+.cards-product .cards-product-card-body h3 a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+.cards-product .cards-product-card-body ul li a {
+  color: var(--link-color);
+  text-decoration: none;
+  font-size: var(--body-font-size-m);
+}
+
+.cards-product .cards-product-card-body > p:last-child a {
+  display: inline-block;
+  margin-top: 24px;
+  padding: 12px 24px;
+  background-color: var(--link-color);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: var(--body-font-size-s);
+  font-weight: 700;
+  transition: background-color 0.2s;
+}
+
+/* All link hover styles grouped together */
+.cards-product .cards-product-card-body h3 a:hover {
+  text-decoration: underline;
+}
+
+.cards-product .cards-product-card-body ul li a:hover {
+  text-decoration: underline;
+}
+
+.cards-product .cards-product-card-body > p:last-child a:hover {
+  background-color: var(--link-hover-color);
+}
+
+/* Sub-links list with arrow markers */
+.cards-product .cards-product-card-body ul {
+  list-style: none;
+  margin: 0 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cards-product .cards-product-card-body ul li {
+  padding: 0;
+}
+
+.cards-product .cards-product-card-body ul li::before {
+  content: "\2192";
+  color: var(--link-color);
+  margin-right: 10px;
+  font-weight: 700;
+}

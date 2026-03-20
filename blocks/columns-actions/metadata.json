@@ -1,0 +1,39 @@
+{
+  "variantName": "columns-actions",
+  "baseBlock": "columns",
+  "version": "1.0.0",
+  "created": "2026-03-18T12:59:00.000Z",
+  "sourceContext": {
+    "originUrl": "https://www.allianz.com.au",
+    "originPage": "Allianz Australia homepage",
+    "blockPosition": "middle"
+  },
+  "visualCharacteristics": {
+    "colorScheme": "dark",
+    "density": "compact",
+    "purpose": "customer-actions",
+    "imagePattern": "icon"
+  },
+  "contentPattern": {
+    "structure": "h2 + icon-action-items (3 rows with icon + h3 + link)",
+    "buttonCount": 0,
+    "imageCount": 3
+  },
+  "reuseGuidance": {
+    "suitableFor": [
+      "customer action panels on dark backgrounds",
+      "quick-link sections with icons",
+      "service action grids"
+    ],
+    "notSuitableFor": [
+      "text-heavy two-column layouts",
+      "image-focused columns",
+      "award/testimonial layouts"
+    ]
+  },
+  "usage": {
+    "pagesUsing": ["content/index"],
+    "reuseCount": 1,
+    "lastUsed": "2026-03-18T12:59:00.000Z"
+  }
+}

@@ -16,5 +16,20 @@ export default async function decorate(block) {
   const footer = document.createElement('div');
   while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
 
+  // Structure the bottom bar: wrap <ul> + last <p> (copyright) into a row
+  const wrapper = footer.querySelector('.default-content-wrapper');
+  if (wrapper) {
+    const ul = wrapper.querySelector('ul');
+    const allPs = wrapper.querySelectorAll('p');
+    const lastP = allPs[allPs.length - 1];
+
+    if (ul && lastP) {
+      const bottomBar = document.createElement('div');
+      bottomBar.className = 'footer-bottom-bar';
+      bottomBar.append(lastP, ul);
+      wrapper.append(bottomBar);
+    }
+  }
+
   block.append(footer);
 }

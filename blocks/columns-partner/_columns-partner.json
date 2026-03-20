@@ -1,0 +1,51 @@
+{
+  "definitions": [
+    {
+      "title": "Columns Partner",
+      "id": "columns-partner",
+      "plugins": {
+        "xwalk": {
+          "page": {
+            "resourceType": "core/franklin/components/columns/v1/columns",
+            "template": {
+              "name": "Columns Partner",
+              "columns": "2",
+              "rows": "1"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "models": [
+    {
+      "id": "columns-partner",
+      "fields": [
+        {
+          "component": "text",
+          "valueType": "number",
+          "name": "columns",
+          "value": "",
+          "label": "Columns"
+        },
+        {
+          "component": "text",
+          "valueType": "number",
+          "name": "rows",
+          "value": "",
+          "label": "Rows"
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "id": "columns-partner",
+      "components": ["column-partner"]
+    },
+    {
+      "id": "column-partner",
+      "components": ["text", "image", "button", "title"]
+    }
+  ]
+}

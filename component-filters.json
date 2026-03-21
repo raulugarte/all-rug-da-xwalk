@@ -12,12 +12,14 @@
       "button",
       "cards",
       "cards-article",
+      "cards-cover",
       "cards-product",
       "carousel",
       "columns",
       "columns-actions",
       "columns-awards",
       "columns-features",
+      "columns-info",
       "columns-partner",
       "embed",
       "fragment",
@@ -44,6 +46,12 @@
     "id": "cards-article",
     "components": [
       "card-article"
+    ]
+  },
+  {
+    "id": "cards-cover",
+    "components": [
+      "card-cover"
     ]
   },
   {
@@ -102,6 +110,21 @@
   },
   {
     "id": "column-features",
+    "components": [
+      "text",
+      "image",
+      "button",
+      "title"
+    ]
+  },
+  {
+    "id": "columns-info",
+    "components": [
+      "column-info"
+    ]
+  },
+  {
+    "id": "column-info",
     "components": [
       "text",
       "image",

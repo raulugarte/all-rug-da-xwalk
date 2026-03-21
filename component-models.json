@@ -192,6 +192,25 @@
     ]
   },
   {
+    "id": "card-cover",
+    "fields": [
+      {
+        "component": "reference",
+        "valueType": "string",
+        "name": "image",
+        "label": "Image",
+        "multi": false
+      },
+      {
+        "component": "richtext",
+        "name": "text",
+        "value": "",
+        "label": "Text",
+        "valueType": "string"
+      }
+    ]
+  },
+  {
     "id": "card-product",
     "fields": [
       {
@@ -295,6 +314,25 @@
   },
   {
     "id": "columns-features",
+    "fields": [
+      {
+        "component": "text",
+        "valueType": "number",
+        "name": "columns",
+        "value": "",
+        "label": "Columns"
+      },
+      {
+        "component": "text",
+        "valueType": "number",
+        "name": "rows",
+        "value": "",
+        "label": "Rows"
+      }
+    ]
+  },
+  {
+    "id": "columns-info",
     "fields": [
       {
         "component": "text",
@@ -555,7 +593,7 @@
         "name": "filter",
         "label": "Columns",
         "valueType": "string",
-        "value": "table",
+        "value": "table-4-columns",
         "options": [
           {
             "name": "1 Column",

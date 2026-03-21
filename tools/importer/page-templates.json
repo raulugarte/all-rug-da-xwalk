@@ -9,31 +9,45 @@
       "blocks": [
         {
           "name": "hero-banner",
-          "instances": [".parsys > .a1stage"]
+          "instances": [
+            ".parsys > .a1stage"
+          ]
         },
         {
           "name": "cards-product",
-          "instances": [".parsys > .wrapper:nth-of-type(1) .multi-column-grid"]
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(1) .multi-column-grid"
+          ]
         },
         {
           "name": "columns-actions",
-          "instances": [".parsys > .wrapper:nth-of-type(2) .multi-column-grid"]
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(2) .multi-column-grid"
+          ]
         },
         {
           "name": "columns-awards",
-          "instances": [".parsys > .wrapper:nth-of-type(3) .multi-column-grid"]
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(3) .multi-column-grid"
+          ]
         },
         {
           "name": "columns-features",
-          "instances": [".parsys > .wrapper:nth-of-type(4) .multi-column-grid"]
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(4) .multi-column-grid"
+          ]
         },
         {
           "name": "cards-article",
-          "instances": [".parsys > .wrapper:nth-of-type(5) .multi-column-grid"]
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(5) .multi-column-grid"
+          ]
         },
         {
           "name": "columns-partner",
-          "instances": [".parsys > .experiencefragment:nth-of-type(2) .multi-column-grid"]
+          "instances": [
+            ".parsys > .experiencefragment:nth-of-type(2) .multi-column-grid"
+          ]
         }
       ],
       "sections": [
@@ -42,7 +56,9 @@
           "name": "Hero Banner",
           "selector": ".parsys > .a1stage",
           "style": null,
-          "blocks": ["hero-banner"],
+          "blocks": [
+            "hero-banner"
+          ],
           "defaultContent": []
         },
         {
@@ -50,15 +66,22 @@
           "name": "Insurance Products",
           "selector": ".parsys > .wrapper:nth-of-type(1)",
           "style": null,
-          "blocks": ["cards-product"],
-          "defaultContent": ["h2.c-heading", "div.text .c-copy"]
+          "blocks": [
+            "cards-product"
+          ],
+          "defaultContent": [
+            "h2.c-heading",
+            "div.text .c-copy"
+          ]
         },
         {
           "id": "section-3-customer",
           "name": "Existing Customer Actions",
           "selector": ".parsys > .wrapper:nth-of-type(2)",
           "style": "dark-blue",
-          "blocks": ["columns-actions"],
+          "blocks": [
+            "columns-actions"
+          ],
           "defaultContent": []
         },
         {
@@ -66,7 +89,9 @@
           "name": "Awards Section",
           "selector": ".parsys > .wrapper:nth-of-type(3)",
           "style": null,
-          "blocks": ["columns-awards"],
+          "blocks": [
+            "columns-awards"
+          ],
           "defaultContent": []
         },
         {
@@ -74,23 +99,35 @@
           "name": "What Care Looks Like",
           "selector": ".parsys > .wrapper:nth-of-type(4)",
           "style": "light-grey",
-          "blocks": ["columns-features"],
-          "defaultContent": ["h2.c-heading"]
+          "blocks": [
+            "columns-features"
+          ],
+          "defaultContent": [
+            "h2.c-heading"
+          ]
         },
         {
           "id": "section-6-articles",
           "name": "Help Articles",
           "selector": ".parsys > .wrapper:nth-of-type(5)",
           "style": null,
-          "blocks": ["cards-article"],
-          "defaultContent": ["h2.c-heading", "div.text .c-copy", "div.link"]
+          "blocks": [
+            "cards-article"
+          ],
+          "defaultContent": [
+            "h2.c-heading",
+            "div.text .c-copy",
+            "div.link"
+          ]
         },
         {
           "id": "section-7-olympic",
           "name": "Olympic Partnership",
           "selector": ".parsys > .experiencefragment:nth-of-type(2)",
           "style": null,
-          "blocks": ["columns-partner"],
+          "blocks": [
+            "columns-partner"
+          ],
           "defaultContent": []
         },
         {
@@ -99,7 +136,11 @@
           "selector": ".parsys > .wrapper:nth-of-type(6)",
           "style": "light-blue",
           "blocks": [],
-          "defaultContent": ["h2.c-heading", "div.text .c-copy", "div.link"]
+          "defaultContent": [
+            "h2.c-heading",
+            "div.text .c-copy",
+            "div.link"
+          ]
         },
         {
           "id": "section-9-social",
@@ -107,7 +148,10 @@
           "selector": ".parsys > .experiencefragment:nth-of-type(3)",
           "style": null,
           "blocks": [],
-          "defaultContent": ["h2.c-heading", ".c-social-icon"]
+          "defaultContent": [
+            "h2.c-heading",
+            ".c-social-icon"
+          ]
         },
         {
           "id": "section-10-conditions",
@@ -115,7 +159,271 @@
           "selector": ".parsys > .wrapper:nth-of-type(7)",
           "style": null,
           "blocks": [],
-          "defaultContent": ["h2.c-heading", ".c-list--ordered"]
+          "defaultContent": [
+            "h2.c-heading",
+            ".c-list--ordered"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "car-insurance",
+      "urls": [
+        "https://www.allianz.com.au/car-insurance.html"
+      ],
+      "description": "Allianz Australia car insurance product page with hero banner, cover options, comparison table, customer actions, CTP info, roadside assistance, trust signals, related content, FAQs, and conditions",
+      "blocks": [
+        {
+          "name": "hero-banner",
+          "instances": [
+            ".parsys > .a1stage"
+          ]
+        },
+        {
+          "name": "cards-cover",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(1) .multi-column-grid"
+          ]
+        },
+        {
+          "name": "table",
+          "instances": [
+            ".parsys > .product-comparison-table-new"
+          ]
+        },
+        {
+          "name": "columns-actions",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(5) .multi-column-grid"
+          ]
+        },
+        {
+          "name": "columns-info",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(6) .multi-column-grid"
+          ]
+        },
+        {
+          "name": "columns-features",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(9) .multi-column-grid"
+          ]
+        },
+        {
+          "name": "cards-article",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(10) .multi-column-grid"
+          ]
+        },
+        {
+          "name": "accordion",
+          "instances": [
+            ".parsys > .wrapper:nth-of-type(11) .c-accordion"
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "section-1-hero",
+          "name": "Hero Banner",
+          "selector": ".parsys > .a1stage",
+          "style": null,
+          "blocks": [
+            "hero-banner"
+          ],
+          "defaultContent": []
+        },
+        {
+          "id": "section-2-disclaimer",
+          "name": "Policy Disclaimer",
+          "selector": ".parsys > .experiencefragment:nth-of-type(1)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "p"
+          ]
+        },
+        {
+          "id": "section-2b-rating",
+          "name": "Customer Rating",
+          "selector": ".parsys > .experiencefragment:nth-of-type(2)",
+          "style": "dark-blue",
+          "blocks": [],
+          "defaultContent": [
+            "img",
+            "p"
+          ]
+        },
+        {
+          "id": "section-3-covers",
+          "name": "Cover Options",
+          "selector": ".parsys > .wrapper:nth-of-type(1)",
+          "style": null,
+          "blocks": [
+            "cards-cover"
+          ],
+          "defaultContent": [
+            "h2.headline"
+          ]
+        },
+        {
+          "id": "section-4-comparison",
+          "name": "Comparison Table",
+          "headingMatch": "Compare our Car Insurance",
+          "selector": [
+            ".parsys > .wrapper:nth-of-type(2)",
+            ".parsys > .product-comparison-table-new",
+            ".parsys > .wrapper:nth-of-type(3)"
+          ],
+          "style": null,
+          "blocks": [
+            "table"
+          ],
+          "defaultContent": [
+            "h2.headline",
+            "div.text"
+          ]
+        },
+        {
+          "id": "section-5-states",
+          "name": "State-Based Links",
+          "selector": ".parsys > .wrapper:nth-of-type(4)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            ".state-link-list"
+          ]
+        },
+        {
+          "id": "section-6-customer",
+          "name": "Existing Customer Actions",
+          "headingMatch": "Already an Allianz",
+          "selector": ".parsys > .wrapper:nth-of-type(5)",
+          "style": "dark-blue",
+          "blocks": [
+            "columns-actions"
+          ],
+          "defaultContent": [
+            "h2.headline",
+            "p"
+          ]
+        },
+        {
+          "id": "section-7-ctp",
+          "name": "CTP Information",
+          "selector": ".parsys > .wrapper:nth-of-type(6)",
+          "style": null,
+          "blocks": [
+            "columns-info"
+          ],
+          "defaultContent": []
+        },
+        {
+          "id": "section-8-roadside",
+          "name": "Roadside Assistance",
+          "selector": ".parsys > .wrapper:nth-of-type(7)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            "p",
+            "a.cta"
+          ]
+        },
+        {
+          "id": "section-9-why-choose",
+          "name": "Why Choose Allianz",
+          "headingMatch": "Why choose Allianz",
+          "selector": ".parsys > .wrapper:nth-of-type(9)",
+          "style": null,
+          "blocks": [
+            "columns-features"
+          ],
+          "defaultContent": [
+            "h2.headline"
+          ]
+        },
+        {
+          "id": "section-10-related",
+          "name": "Related Content",
+          "selector": ".parsys > .wrapper:nth-of-type(10)",
+          "style": null,
+          "blocks": [
+            "cards-article"
+          ],
+          "defaultContent": [
+            "h2.headline"
+          ]
+        },
+        {
+          "id": "section-11-cta",
+          "name": "Get Started CTA",
+          "selector": ".parsys > .experiencefragment:nth-of-type(3)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            "a.cta"
+          ]
+        },
+        {
+          "id": "section-12-faq",
+          "name": "FAQs",
+          "headingMatch": "Frequently asked questions",
+          "selector": ".parsys > .wrapper:nth-of-type(11)",
+          "style": "light-grey",
+          "blocks": [
+            "accordion"
+          ],
+          "defaultContent": [
+            "h2.headline"
+          ]
+        },
+        {
+          "id": "section-13-raa",
+          "name": "RAA Insurance Info",
+          "selector": ".parsys > .wrapper:nth-of-type(12)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            "p"
+          ]
+        },
+        {
+          "id": "section-14-help",
+          "name": "Help Section",
+          "selector": ".parsys > .experiencefragment:nth-of-type(4)",
+          "style": "light-blue",
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            "p",
+            "a.cta"
+          ]
+        },
+        {
+          "id": "section-15-social",
+          "name": "Social Media Links",
+          "selector": ".parsys > .experiencefragment:nth-of-type(5)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            ".c-social-icon"
+          ]
+        },
+        {
+          "id": "section-16-conditions",
+          "name": "Conditions/Footnotes",
+          "selector": ".parsys > .wrapper:nth-of-type(13)",
+          "style": null,
+          "blocks": [],
+          "defaultContent": [
+            "h2.headline",
+            ".c-list--ordered"
+          ]
         }
       ]
     }

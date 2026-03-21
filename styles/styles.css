@@ -325,6 +325,46 @@ main .section.dark-blue a.button:hover {
   border-color: var(--color-light-teal);
 }
 
+/* Rating section: star image + text side by side */
+main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 32px 0;
+}
+
+main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) p:has(img) {
+  margin: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) img {
+  display: block;
+  width: 200px;
+  height: auto;
+}
+
+main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) p:not(:has(img)) {
+  margin: 0;
+  font-size: var(--body-font-size-s);
+}
+
+@media (width >= 600px) {
+  main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) {
+    flex-direction: row;
+    text-align: left;
+    gap: 32px;
+    justify-content: center;
+  }
+
+  main .section.dark-blue > .default-content-wrapper:has(img[src*="stars"]) img {
+    width: 220px;
+  }
+}
+
 /* Two-column layout: heading left, block right on desktop */
 @media (width >= 900px) {
   main .section.dark-blue.columns-actions-container {
@@ -337,6 +377,40 @@ main .section.dark-blue a.button:hover {
   main .section.dark-blue.columns-actions-container h2 {
     font-size: 40px;
   }
+
+  main .section.dark-blue.columns-actions-container .columns-info-wrapper {
+    grid-column: 1 / -1;
+  }
+}
+
+/* CTP columns-info inside dark-blue section: override to white background */
+main .section.dark-blue .columns-info-wrapper {
+  background-color: var(--color-white, #fff);
+  padding: 48px var(--content-padding, 32px);
+  margin-top: 32px;
+}
+
+main .section.dark-blue .columns-info,
+main .section.dark-blue .columns-info h2,
+main .section.dark-blue .columns-info p,
+main .section.dark-blue .columns-info li {
+  color: var(--color-allianz-blue, #003781);
+}
+
+main .section.dark-blue .columns-info a:not(.button) {
+  color: var(--color-allianz-blue, #003781);
+}
+
+main .section.dark-blue .columns-info .button-container a.button {
+  background-color: var(--color-allianz-blue, #003781);
+  color: var(--color-white, #fff);
+  border-color: var(--color-allianz-blue, #003781);
+}
+
+main .section.dark-blue .columns-info .button-container a.button:hover {
+  background-color: var(--color-dark-navy, #002a5c);
+  border-color: var(--color-dark-navy, #002a5c);
+  color: var(--color-white, #fff);
 }
 
 /* light-grey section (e.g. "What care looks like") */
@@ -419,4 +493,132 @@ main .section.light-blue .button-container a.button:hover {
 .section.cards-product-container > .default-content-wrapper:last-child ul li a:hover {
   background-color: var(--link-color);
   color: #fff;
+}
+
+/* "Explore Car Insurance in your state" – pill button links */
+main .default-content-wrapper:has(> #explore-car-insurance-in-your-state) ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+main .default-content-wrapper:has(> #explore-car-insurance-in-your-state) ul li {
+  display: flex;
+  padding: 0;
+}
+
+main .default-content-wrapper:has(> #explore-car-insurance-in-your-state) ul li a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+  border-radius: 8px;
+  font-size: var(--body-font-size-m);
+  font-weight: 700;
+  text-decoration: none;
+  min-width: 60px;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+main .default-content-wrapper:has(> #explore-car-insurance-in-your-state) ul li a:hover {
+  background-color: var(--color-dark-navy, #002a5c);
+}
+
+/* "Want Roadside Assistance?" – icon + text CTA section */
+main .section:has(> .default-content-wrapper > #want-roadside-assistance) {
+  background-color: #f1f9fa;
+  padding: 48px 0;
+}
+
+main .default-content-wrapper:has(> #want-roadside-assistance) {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Icon image – constrain size */
+main .default-content-wrapper:has(> #want-roadside-assistance) > p:first-child {
+  margin: 0 0 16px;
+  line-height: 0;
+}
+
+main .default-content-wrapper:has(> #want-roadside-assistance) > p:first-child img {
+  width: 100px;
+  height: auto;
+}
+
+/* Heading */
+main .default-content-wrapper:has(> #want-roadside-assistance) > h2 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+
+/* Description paragraph */
+main .default-content-wrapper:has(> #want-roadside-assistance) > p:not(:first-child):not(.button-container) {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+/* Button – outline style */
+main .default-content-wrapper:has(> #want-roadside-assistance) .button-container a.button {
+  background-color: transparent;
+  color: var(--color-allianz-blue);
+  border: 1px solid var(--color-allianz-blue);
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+main .default-content-wrapper:has(> #want-roadside-assistance) .button-container a.button:hover {
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+}
+
+/* Desktop: horizontal layout with icon left, content right */
+@media (width >= 900px) {
+  main .default-content-wrapper:has(> #want-roadside-assistance) {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 32px;
+    row-gap: 0;
+    align-items: start;
+  }
+
+  /* Icon spans all rows in the first column */
+  main .default-content-wrapper:has(> #want-roadside-assistance) > p:first-child {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: center;
+    margin: 0;
+  }
+
+  main .default-content-wrapper:has(> #want-roadside-assistance) > p:first-child img {
+    width: 100px;
+  }
+
+  /* Heading, text, button in the second column */
+  main .default-content-wrapper:has(> #want-roadside-assistance) > h2 {
+    grid-column: 2;
+    font-size: 40px;
+    margin: 0 0 20px;
+  }
+
+  main .default-content-wrapper:has(> #want-roadside-assistance) > p:not(:first-child):not(.button-container) {
+    grid-column: 2;
+  }
+
+  main .default-content-wrapper:has(> #want-roadside-assistance) > .button-container {
+    grid-column: 2;
+  }
 }

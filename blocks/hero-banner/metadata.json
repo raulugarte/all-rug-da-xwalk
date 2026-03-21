@@ -32,8 +32,8 @@
     ]
   },
   "usage": {
-    "pagesUsing": ["content/index"],
-    "reuseCount": 1,
-    "lastUsed": "2026-03-18T12:59:00.000Z"
+    "pagesUsing": ["content/index", "content/car-insurance"],
+    "reuseCount": 2,
+    "lastUsed": "2026-03-20T00:00:00.000Z"
   }
 }

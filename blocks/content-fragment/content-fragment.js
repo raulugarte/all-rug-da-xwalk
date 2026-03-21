@@ -1,6 +1,6 @@
-import { getMetadata } from '../../scripts/aem.js';
-import { isAuthorEnvironment } from '../../scripts/scripts.js';
-import { getHostname } from '../../scripts/utils.js';
+import { getMetadata, readBlockConfig } from '../../scripts/aem.js';
+import { isAuthorEnvironment, moveInstrumentation } from '../../scripts/scripts.js';
+import { getHostname, mapAemPathToSitePath } from '../../scripts/utils.js';
 
 /**
  *
@@ -10,39 +10,41 @@ export default async function decorate(block) {
   // Configuration
   const CONFIG = {
     WRAPPER_SERVICE_URL: 'https://3635370-refdemoapigateway-stage.adobeioruntime.net/api/v1/web/ref-demo-api-gateway/fetch-cf',
-    // Adjust this to your actual persisted query name if different
-    GRAPHQL_QUERY: '/graphql/execute.json/ref-demo-eds/ArticleByPath',
+    GRAPHQL_QUERY: '/graphql/execute.json/ref-demo-eds/CTAByPath',
+    EXCLUDED_THEME_KEYS: new Set(['brandSite', 'brandLogo']),
   };
 
   const hostnameFromPlaceholders = await getHostname();
-  const hostname = hostnameFromPlaceholders ? hostnameFromPlaceholders : getMetadata('hostname');
+  const hostname = hostnameFromPlaceholders || getMetadata('hostname');
   const aemauthorurl = getMetadata('authorurl') || '';
+
   const aempublishurl = hostname?.replace('author', 'publish')?.replace(/\/$/, '');
 
-  // Read configuration from block content:
-  // 1: CF path (reference)
-  // 2: variation (contentFragmentVariation)
-  // 3: display style (displaystyle)
-  // 4: alignment (alignment)
-  const contentPath = block.querySelector(':scope div:nth-child(1) > div a')?.textContent?.trim();
+  const persistedquery = '/graphql/execute.json/ref-demo-eds/CTAByPath';
+
+  // const properties = readBlockConfig(block);
+
+  const contentPath = block
+    .querySelector(':scope div:nth-child(1) > div a')
+    ?.textContent?.trim();
   const variationname =
     block
       .querySelector(':scope div:nth-child(2) > div')
       ?.textContent?.trim()
       ?.toLowerCase()
       ?.replace(' ', '_') || 'master';
-  const displayStyle = block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() || '';
-  const alignment = block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() || '';
+  const displayStyle =
+    block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() ||
+    '';
+  const alignment =
+    block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() ||
+    '';
+  const ctaStyle =
+    block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() ||
+    'button';
 
   block.innerHTML = '';
   const isAuthor = isAuthorEnvironment();
-
-  if (!contentPath) {
-    // No CF path configured – nothing to render
-    // eslint-disable-next-line no-console
-    console.warn('Content Fragment block: no content path provided');
-    return;
-  }
 
   // Prepare request configuration based on environment
   const requestConfig = isAuthor
@@ -71,8 +73,7 @@ export default async function decorate(block) {
     });
 
     if (!response.ok) {
-      // eslint-disable-next-line no-console
-      console.error(`Error making CF GraphQL request: ${response.status}`, {
+      console.error(`error making cf graphql request: ${response.status}`, {
         status: response.status,
         contentPath,
         variationname,
@@ -86,8 +87,7 @@ export default async function decorate(block) {
     try {
       offer = await response.json();
     } catch (parseError) {
-      // eslint-disable-next-line no-console
-      console.error('Error parsing JSON from GraphQL response:', {
+      console.error('Error parsing offer JSON from response:', {
         error: parseError.message,
         stack: parseError.stack,
         contentPath,
@@ -98,24 +98,76 @@ export default async function decorate(block) {
       return;
     }
 
-    // Expecting persisted query "ArticleByPath" with root "articleByPath"
-    // and fields: headline (string), main (rich text), heroImage (content reference)
-    const cfReq = offer?.data?.articleByPath?.item;
+    const cfReq = offer?.data?.ctaByPath?.item;
 
     if (!cfReq) {
-      // eslint-disable-next-line no-console
-      console.error('Error parsing response from GraphQL request - no valid article data found', {
-        response: offer,
-        contentPath,
-        variationname,
-      });
+      console.error(
+        'Error parsing response from GraphQL request - no valid data found',
+        {
+          response: offer,
+          contentPath,
+          variationname,
+        },
+      );
       block.innerHTML = '';
-      return;
+      return; // Exit early if no valid data
     }
 
-    // Set up block authoring attributes
-    const itemId = `urn:aemconnection:${contentPath}/jcr:content/data/${variationname}`;
-    const imgUrl = isAuthor ? cfReq.heroImage?._authorUrl : cfReq.heroImage?._publishUrl;
+    // ------------------------------------------------------------
+    // Normalize fields for different CF models:
+    // - Existing CTA model: title, subtitle, description, bannerimage
+    // - Alternative model: headline, main, heroImage/heroimage
+    // ------------------------------------------------------------
+
+    const title =
+      cfReq.title ??
+      cfReq.headline ?? // Headline (CF element "Headline")
+      '';
+
+    const subtitle = cfReq.subtitle ?? '';
+
+    const descriptionPlain =
+      cfReq.description?.plaintext ??
+      cfReq.main?.plaintext ?? // Main as rich text (CF element "Main")
+      cfReq.main ?? // Main as plain text (fallback)
+      '';
+
+    // Image field normalization
+    const imageRef =
+      cfReq.bannerimage ??
+      cfReq.heroImage ?? // Hero Image (camelCase)
+      cfReq.heroimage ?? // Hero Image (all lowercase fallback)
+      null;
+
+    const imgUrl = imageRef
+      ? isAuthor
+        ? imageRef._authorUrl
+        : imageRef._publishUrl
+      : '';
+
+    // For in-place editing, try to align data-aue-prop with the actual field
+    const titlePropName =
+      'title' in cfReq
+        ? 'title'
+        : 'headline' in cfReq
+        ? 'headline'
+        : 'title';
+
+    const descriptionPropName =
+      'description' in cfReq
+        ? 'description'
+        : 'main' in cfReq
+        ? 'main'
+        : 'description';
+
+    const imagePropName =
+      'bannerimage' in cfReq
+        ? 'bannerimage'
+        : 'heroImage' in cfReq
+        ? 'heroImage'
+        : 'heroimage' in cfReq
+        ? 'heroimage'
+        : 'bannerimage';
 
     // Determine the layout style
     const isImageLeft = displayStyle === 'image-left';
@@ -127,46 +179,134 @@ export default async function decorate(block) {
     let bannerContentStyle = '';
     let bannerDetailStyle = '';
 
-    if (isImageLeft || isImageRight || isImageTop || isImageBottom) {
-      // image-left/right/top/bottom -> image as background of outer wrapper
-      bannerContentStyle = imgUrl ? `background-image: url(${imgUrl});` : '';
-    } else {
-      // Default layout: image as background with gradient overlay (original behavior)
-      bannerDetailStyle = imgUrl
-        ? `background-image: linear-gradient(90deg,rgba(0,0,0,0.6), rgba(0,0,0,0.1) 80%) ,url(${imgUrl});`
-        : '';
+    if (imgUrl) {
+      if (isImageLeft) {
+        bannerContentStyle = `background-image: url(${imgUrl});`;
+      } else if (isImageRight) {
+        bannerContentStyle = `background-image: url(${imgUrl});`;
+      } else if (isImageTop) {
+        bannerContentStyle = `background-image: url(${imgUrl});`;
+      } else if (isImageBottom) {
+        bannerContentStyle = `background-image: url(${imgUrl});`;
+      } else {
+        // Default layout: image as background with gradient overlay (original behavior)
+        bannerDetailStyle = `background-image: linear-gradient(90deg,rgba(0,0,0,0.6), rgba(0,0,0,0.1) 80%) ,url(${imgUrl});`;
+      }
     }
 
+    // Derive CTA href: supports author-side paths/URLs and publish/EDS URLs
+    let ctaHref = '#';
+    const cta = cfReq?.ctaurl;
+    if (cta) {
+      if (typeof cta === 'string') {
+        // Absolute URL vs repository path
+        ctaHref = /^https?:\/\//i.test(cta)
+          ? cta
+          : `${isAuthor ? aemauthorurl || '' : aempublishurl || ''}${cta}`;
+      } else if (typeof cta === 'object') {
+        const authorUrl = cta._authorUrl;
+        const publishUrl = cta._publishUrl || cta._url;
+        const pathOnly = cta._path;
+        if (isAuthor) {
+          ctaHref =
+            authorUrl || (pathOnly ? `${aemauthorurl || ''}${pathOnly}` : '#');
+        } else {
+          ctaHref = pathOnly || publishUrl || '#';
+        }
+      }
+    }
+
+    // Map content paths to site-relative paths using paths.json on live
+    if (!isAuthor) {
+      try {
+        let candidate = ctaHref;
+        if (/^https?:\/\//i.test(candidate)) {
+          const u = new URL(candidate);
+          candidate = u.pathname;
+        }
+        if (candidate && candidate.startsWith('/content/')) {
+          const mapped = await mapAemPathToSitePath(candidate);
+          if (mapped) ctaHref = mapped;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to map CTA via paths.json', e);
+      }
+    }
+
+    const itemId = `urn:aemconnection:${contentPath}/jcr:content/data/${variationname}`;
+    block.setAttribute('data-aue-type', 'container');
+
+    // Render block HTML – now supports both:
+    // - Title/Subtitle/Description/Banner Image
+    // - Headline/Main/Hero Image
     block.innerHTML = `
-      <div class="banner-content block ${displayStyle}"
-           data-aue-resource="${itemId}"
-           data-aue-label="${variationname || 'Elements'}"
-           data-aue-type="reference"
-           data-aue-filter="contentfragment"
-           style="${bannerContentStyle}">
-        <div class="banner-detail ${alignment}"
-             style="${bannerDetailStyle}"
-             data-aue-prop="heroImage"
-             data-aue-label="Hero Image"
-             data-aue-type="media">
-          <h2 data-aue-prop="headline"
-              data-aue-label="Headline"
-              data-aue-type="text"
-              class="cftitle">
-            ${cfReq?.headline || ''}
+      <div
+        class="banner-content block ${displayStyle}"
+        data-aue-resource="${itemId}"
+        data-aue-label="${variationname || 'Elements'}"
+        data-aue-type="reference"
+        data-aue-filter="contentfragment"
+        style="${bannerContentStyle}"
+      >
+        <div
+          class="banner-detail ${alignment}"
+          style="${bannerDetailStyle}"
+          data-aue-prop="${imagePropName}"
+          data-aue-label="Main Image"
+          data-aue-type="media"
+        >
+          <h2
+            data-aue-prop="${titlePropName}"
+            data-aue-label="Title / Headline"
+            data-aue-type="text"
+            class="cftitle"
+          >
+            ${title || ''}
           </h2>
-          <div data-aue-prop="main"
-               data-aue-label="Main"
-               data-aue-type="richtext"
-               class="cfdescription">
-            <p>${cfReq?.main?.plaintext || ''}</p>
+          <h3
+            data-aue-prop="subtitle"
+            data-aue-label="SubTitle"
+            data-aue-type="text"
+            class="cfsubtitle"
+          >
+            ${subtitle || ''}
+          </h3>
+
+          <div
+            data-aue-prop="${descriptionPropName}"
+            data-aue-label="Description / Main"
+            data-aue-type="richtext"
+            class="cfdescription"
+          >
+            <p>${descriptionPlain || ''}</p>
           </div>
+
+          <p class="button-container ${ctaStyle}">
+            <a
+              href="${ctaHref}"
+              data-aue-prop="ctaurl"
+              data-aue-label="Button Link/URL"
+              data-aue-type="reference"
+              target="_blank"
+              rel="noopener"
+              data-aue-filter="page"
+              class="button"
+            >
+              <span
+                data-aue-prop="ctalabel"
+                data-aue-label="Button Label"
+                data-aue-type="text"
+              >
+                ${cfReq?.ctalabel || ''}
+              </span>
+            </a>
+          </p>
         </div>
         <div class="banner-logo"></div>
       </div>
     `;
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error rendering content fragment:', {
       error: error.message,
       stack: error.stack,
@@ -176,4 +316,11 @@ export default async function decorate(block) {
     });
     block.innerHTML = '';
   }
+
+  /*
+  if (!isAuthor) {
+    moveInstrumentation(block, null);
+    block.querySelectorAll('*').forEach((elem) => moveInstrumentation(elem, null));
+  }
+  */
 }

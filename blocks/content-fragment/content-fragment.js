@@ -1,326 +1,165 @@
-import { getMetadata, readBlockConfig } from '../../scripts/aem.js';
-import { isAuthorEnvironment, moveInstrumentation } from '../../scripts/scripts.js';
-import { getHostname, mapAemPathToSitePath } from '../../scripts/utils.js';
+import { createOptimizedPicture } from '../../scripts/aem.js';
 
 /**
- *
+ * GraphQL endpoint from AEM:
+ * /content/cq:graphql/securbank/endpoint
+ * 
+ * In most AEM setups it's recommended to use the .json extension for JSON output.
+ * If your endpoint does not use .json, change GRAPHQL_ENDPOINT accordingly.
+ */
+const GRAPHQL_ENDPOINT = '/content/cq:graphql/securbank/endpoint.json';
+
+const ARTICLE_QUERY = `
+  query ArticleList {
+    articleList(
+      limit: 3
+      _assetTransform: {
+        format: WEBP
+        quality: 85
+      }
+    ) {
+      items {
+        _path
+        headline
+        main {
+          plaintext
+        }
+        heroImage {
+          ... on ImageRef {
+            _publishUrl
+            _dynamicUrl
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch articles from AEM GraphQL.
+ */
+async function fetchArticles() {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: ARTICLE_QUERY }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  if (json.errors && json.errors.length) {
+    // eslint-disable-next-line no-console
+    console.error('GraphQL errors:', json.errors);
+    throw new Error('GraphQL returned errors');
+  }
+
+  return json.data?.articleList?.items || [];
+}
+
+/**
+ * Build a single article card DOM.
+ */
+function renderArticle(article) {
+  const { _path, headline, main, heroImage } = article;
+
+  const articleEl = document.createElement('article');
+  articleEl.className = 'content-fragment__item';
+
+  // Instrument the CF for Universal Editor:
+  // - data-aue-resource points to the CF data node
+  // - child elements use data-aue-prop for individual fields
+  const cfDataPath = `${_path}/jcr:content/data/master`;
+  articleEl.dataset.aueResource = `urn:aemconnection:${cfDataPath}`;
+  articleEl.dataset.aueType = 'reference';
+
+  // Image (heroImage)
+  if (heroImage && (heroImage._dynamicUrl || heroImage._publishUrl)) {
+    const heroUrl = heroImage._dynamicUrl || heroImage._publishUrl;
+    const picture = createOptimizedPicture(heroUrl, headline || 'Article hero image', true);
+    picture.classList.add('content-fragment__image');
+    picture.dataset.aueProp = 'heroImage';
+    picture.dataset.aueType = 'media';
+    articleEl.appendChild(picture);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'content-fragment__body';
+
+  // Headline
+  if (headline) {
+    const h2 = document.createElement('h2');
+    h2.className = 'content-fragment__headline';
+    h2.textContent = headline;
+    h2.dataset.aueProp = 'headline';
+    h2.dataset.aueType = 'text';
+    body.appendChild(h2);
+  }
+
+  // Main text (plaintext)
+  if (main?.plaintext) {
+    const p = document.createElement('p');
+    p.className = 'content-fragment__main';
+    p.textContent = main.plaintext;
+    p.dataset.aueProp = 'main';
+    p.dataset.aueType = 'richtext';
+    body.appendChild(p);
+  }
+
+  articleEl.appendChild(body);
+  return articleEl;
+}
+
+/**
+ * Default block decorator.
  * @param {Element} block
  */
 export default async function decorate(block) {
-  // Configuration
-  const CONFIG = {
-    WRAPPER_SERVICE_URL: 'https://3635370-refdemoapigateway-stage.adobeioruntime.net/api/v1/web/ref-demo-api-gateway/fetch-cf',
-    GRAPHQL_QUERY: '/graphql/execute.json/ref-demo-eds/CTAByPath',
-    EXCLUDED_THEME_KEYS: new Set(['brandSite', 'brandLogo']),
-  };
+  // Avoid double-initialization
+  if (block.dataset.initialized) return;
+  block.dataset.initialized = 'true';
 
-  const hostnameFromPlaceholders = await getHostname();
-  const hostname = hostnameFromPlaceholders || getMetadata('hostname');
-  const aemauthorurl = getMetadata('authorurl') || '';
+  block.classList.add('content-fragment');
 
-  const aempublishurl = hostname?.replace('author', 'publish')?.replace(/\/$/, '');
-
-  const persistedquery = '/graphql/execute.json/ref-demo-eds/CTAByPath';
-
-  // const properties = readBlockConfig(block);
-
-  const contentPath = block
-    .querySelector(':scope div:nth-child(1) > div a')
-    ?.textContent?.trim();
-  const variationname =
-    block
-      .querySelector(':scope div:nth-child(2) > div')
-      ?.textContent?.trim()
-      ?.toLowerCase()
-      ?.replace(' ', '_') || 'master';
-  const displayStyle =
-    block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() ||
-    '';
-  const alignment =
-    block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() ||
-    '';
-  const ctaStyle =
-    block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() ||
-    'button';
-
+  // Optional: show a simple loading state
+  const loading = document.createElement('div');
+  loading.className = 'content-fragment__loading';
+  loading.textContent = 'Loading articles…';
   block.innerHTML = '';
-  const isAuthor = isAuthorEnvironment();
-
-  // Prepare request configuration based on environment
-  const requestConfig = isAuthor
-    ? {
-        url: `${aemauthorurl}${CONFIG.GRAPHQL_QUERY};path=${contentPath};variation=${variationname};ts=${Date.now()}`,
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }
-    : {
-        url: `${CONFIG.WRAPPER_SERVICE_URL}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          graphQLPath: `${aempublishurl}${CONFIG.GRAPHQL_QUERY}`,
-          cfPath: contentPath,
-          variation: `${variationname};ts=${Date.now()}`,
-        }),
-      };
+  block.appendChild(loading);
 
   try {
-    // Fetch data
-    const response = await fetch(requestConfig.url, {
-      method: requestConfig.method,
-      headers: requestConfig.headers,
-      ...(requestConfig.body && { body: requestConfig.body }),
-    });
+    const articles = await fetchArticles();
 
-    if (!response.ok) {
-      console.error(`error making cf graphql request: ${response.status}`, {
-        status: response.status,
-        contentPath,
-        variationname,
-        isAuthor,
-      });
-      block.innerHTML = '';
-      return;
-    }
-
-    let offer;
-    try {
-      offer = await response.json();
-    } catch (parseError) {
-      console.error('Error parsing offer JSON from response:', {
-        error: parseError.message,
-        stack: parseError.stack,
-        contentPath,
-        variationname,
-        isAuthor,
-      });
-      block.innerHTML = '';
-      return;
-    }
-
-    const cfReq = offer?.data?.ctaByPath?.item;
-
-    if (!cfReq) {
-      console.error(
-        'Error parsing response from GraphQL request - no valid data found',
-        {
-          response: offer,
-          contentPath,
-          variationname,
-        },
-      );
-      block.innerHTML = '';
-      return; // Exit early if no valid data
-    }
-
-    // ------------------------------------------------------------
-    // Normalize fields for different CF models:
-    // - Existing CTA model: title, subtitle, description, bannerimage
-    // - Alternative model: headline, main, heroImage/heroimage
-    // ------------------------------------------------------------
-
-    const title =
-      cfReq.title ??
-      cfReq.headline ?? // Headline (CF element "Headline")
-      '';
-
-    const subtitle = cfReq.subtitle ?? '';
-
-    const descriptionPlain =
-      cfReq.description?.plaintext ??
-      cfReq.main?.plaintext ?? // Main as rich text (CF element "Main")
-      cfReq.main ?? // Main as plain text (fallback)
-      '';
-
-    // Image field normalization
-    const imageRef =
-      cfReq.bannerimage ??
-      cfReq.heroImage ?? // Hero Image (camelCase)
-      cfReq.heroimage ?? // Hero Image (all lowercase fallback)
-      null;
-
-    const imgUrl = imageRef
-      ? isAuthor
-        ? imageRef._authorUrl
-        : imageRef._publishUrl
-      : '';
-
-    // For in-place editing, try to align data-aue-prop with the actual field
-    const titlePropName =
-      'title' in cfReq
-        ? 'title'
-        : 'headline' in cfReq
-        ? 'headline'
-        : 'title';
-
-    const descriptionPropName =
-      'description' in cfReq
-        ? 'description'
-        : 'main' in cfReq
-        ? 'main'
-        : 'description';
-
-    const imagePropName =
-      'bannerimage' in cfReq
-        ? 'bannerimage'
-        : 'heroImage' in cfReq
-        ? 'heroImage'
-        : 'heroimage' in cfReq
-        ? 'heroimage'
-        : 'bannerimage';
-
-    // Determine the layout style
-    const isImageLeft = displayStyle === 'image-left';
-    const isImageRight = displayStyle === 'image-right';
-    const isImageTop = displayStyle === 'image-top';
-    const isImageBottom = displayStyle === 'image-bottom';
-
-    // Set background image and styles based on layout
-    let bannerContentStyle = '';
-    let bannerDetailStyle = '';
-
-    if (imgUrl) {
-      if (isImageLeft) {
-        bannerContentStyle = `background-image: url(${imgUrl});`;
-      } else if (isImageRight) {
-        bannerContentStyle = `background-image: url(${imgUrl});`;
-      } else if (isImageTop) {
-        bannerContentStyle = `background-image: url(${imgUrl});`;
-      } else if (isImageBottom) {
-        bannerContentStyle = `background-image: url(${imgUrl});`;
-      } else {
-        // Default layout: image as background with gradient overlay (original behavior)
-        bannerDetailStyle = `background-image: linear-gradient(90deg,rgba(0,0,0,0.6), rgba(0,0,0,0.1) 80%) ,url(${imgUrl});`;
-      }
-    }
-
-    // Derive CTA href: supports author-side paths/URLs and publish/EDS URLs
-    let ctaHref = '#';
-    const cta = cfReq?.ctaurl;
-    if (cta) {
-      if (typeof cta === 'string') {
-        // Absolute URL vs repository path
-        ctaHref = /^https?:\/\//i.test(cta)
-          ? cta
-          : `${isAuthor ? aemauthorurl || '' : aempublishurl || ''}${cta}`;
-      } else if (typeof cta === 'object') {
-        const authorUrl = cta._authorUrl;
-        const publishUrl = cta._publishUrl || cta._url;
-        const pathOnly = cta._path;
-        if (isAuthor) {
-          ctaHref =
-            authorUrl || (pathOnly ? `${aemauthorurl || ''}${pathOnly}` : '#');
-        } else {
-          ctaHref = pathOnly || publishUrl || '#';
-        }
-      }
-    }
-
-    // Map content paths to site-relative paths using paths.json on live
-    if (!isAuthor) {
-      try {
-        let candidate = ctaHref;
-        if (/^https?:\/\//i.test(candidate)) {
-          const u = new URL(candidate);
-          candidate = u.pathname;
-        }
-        if (candidate && candidate.startsWith('/content/')) {
-          const mapped = await mapAemPathToSitePath(candidate);
-          if (mapped) ctaHref = mapped;
-        }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Failed to map CTA via paths.json', e);
-      }
-    }
-
-    const itemId = `urn:aemconnection:${contentPath}/jcr:content/data/${variationname}`;
-    block.setAttribute('data-aue-type', 'container');
-
-    // Render block HTML – now supports both:
-    // - Title/Subtitle/Description/Banner Image
-    // - Headline/Main/Hero Image
-    block.innerHTML = `
-      <div
-        class="banner-content block ${displayStyle}"
-        data-aue-resource="${itemId}"
-        data-aue-label="${variationname || 'Elements'}"
-        data-aue-type="reference"
-        data-aue-filter="contentfragment"
-        style="${bannerContentStyle}"
-      >
-        <div
-          class="banner-detail ${alignment}"
-          style="${bannerDetailStyle}"
-          data-aue-prop="${imagePropName}"
-          data-aue-label="Main Image"
-          data-aue-type="media"
-        >
-          <h2
-            data-aue-prop="${titlePropName}"
-            data-aue-label="Title / Headline"
-            data-aue-type="text"
-            class="cftitle"
-          >
-            ${title || ''}
-          </h2>
-          <h3
-            data-aue-prop="subtitle"
-            data-aue-label="SubTitle"
-            data-aue-type="text"
-            class="cfsubtitle"
-          >
-            ${subtitle || ''}
-          </h3>
-
-          <div
-            data-aue-prop="${descriptionPropName}"
-            data-aue-label="Description / Main"
-            data-aue-type="richtext"
-            class="cfdescription"
-          >
-            <p>${descriptionPlain || ''}</p>
-          </div>
-
-          <p class="button-container ${ctaStyle}">
-            <a
-              href="${ctaHref}"
-              data-aue-prop="ctaurl"
-              data-aue-label="Button Link/URL"
-              data-aue-type="reference"
-              target="_blank"
-              rel="noopener"
-              data-aue-filter="page"
-              class="button"
-            >
-              <span
-                data-aue-prop="ctalabel"
-                data-aue-label="Button Label"
-                data-aue-type="text"
-              >
-                ${cfReq?.ctalabel || ''}
-              </span>
-            </a>
-          </p>
-        </div>
-        <div class="banner-logo"></div>
-      </div>
-    `;
-  } catch (error) {
-    console.error('Error rendering content fragment:', {
-      error: error.message,
-      stack: error.stack,
-      contentPath,
-      variationname,
-      isAuthor,
-    });
     block.innerHTML = '';
-  }
+    if (!articles.length) {
+      const empty = document.createElement('p');
+      empty.className = 'content-fragment__empty';
+      empty.textContent = 'No articles available.';
+      block.appendChild(empty);
+      return;
+    }
 
-  /*
-  if (!isAuthor) {
-    moveInstrumentation(block, null);
-    block.querySelectorAll('*').forEach((elem) => moveInstrumentation(elem, null));
+    const list = document.createElement('div');
+    list.className = 'content-fragment__list';
+
+    articles.forEach((article) => {
+      const item = renderArticle(article);
+      list.appendChild(item);
+    });
+
+    block.appendChild(list);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load articles', e);
+    block.innerHTML = '';
+    const error = document.createElement('p');
+    error.className = 'content-fragment__error';
+    error.textContent = 'Unable to load articles.';
+    block.appendChild(error);
   }
-  */
 }

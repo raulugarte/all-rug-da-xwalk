@@ -1,33 +1,82 @@
-const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath;path=;variation=';
-
+const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Fetch articles via persisted GraphQL query.
- * Assumes response:
- * {
- *   data: {
- *     articleList: {
- *       items: [
- *         {
- *           _path,
- *           headline,
- *           main: { plaintext },
- *           heroImage: { _dynamicUrl, _publishUrl }
+ * Reads CF config from the block.
+ * Assumes a table like:
+ *
+ * | Path                                        | Variation |
+ * | /content/dam/securbank/.../my-article      | main      |
+ *
+ * If Variation is empty, defaults to 'main'.
+ */
+function getFragmentConfigFromBlock(block) {
+  const table = block.querySelector('table');
+  if (!table) {
+    return null;
+  }
+
+  const rows = table.rows;
+  if (!rows || rows.length < 2) {
+    return null;
+  }
+
+  const cells = rows[1].cells;
+  if (!cells || cells.length === 0) {
+    return null;
+  }
+
+  const path = cells[0]?.textContent?.trim() || '';
+  // Default variation is 'main' (per your requirement)
+  const variation = cells[1]?.textContent?.trim() || 'main';
+
+  // Remove authoring table from the rendered content
+  table.remove();
+
+  return { path, variation };
+}
+
+/**
+ * Calls the ArticleByPath persisted query.
+ *
+ * query ArticleByPath($path: String!, $variation: String!) {
+ *   articleByPath(_path: $path, variation: $variation) {
+ *     item {
+ *       headline
+ *       heroImage {
+ *         ... on ImageRef {
+ *           _path
+ *           _authorUrl
+ *           _publishUrl
+ *           _dynamicUrl
  *         }
- *       ]
+ *       }
+ *       _variations
+ *       _metadata {
+ *         stringMetadata {
+ *           name
+ *           value
+ *         }
+ *       }
+ *     }
+ *     _references {
+ *       __typename
  *     }
  *   }
  * }
  */
-async function fetchArticles(limit = 3) {
+async function fetchArticle(path, variation) {
+  if (!path) {
+    throw new Error('Content Fragment path is required');
+  }
+
   const url = new URL(GRAPHQL_ENDPOINT, window.location.origin);
-  // If your persisted query defines a $limit variable, this will be used.
-  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('path', path);
+  url.searchParams.set('variation', variation || 'main');
 
   const res = await fetch(url.toString(), {
     method: 'GET',
     headers: {
-      Accept: 'application/json',
+      'Accept': 'application/json',
     },
   });
 
@@ -36,117 +85,104 @@ async function fetchArticles(limit = 3) {
   }
 
   const json = await res.json();
-  const items = json?.data?.articleList?.items;
+  const article = json?.data?.articleByPath?.item;
 
-  if (!Array.isArray(items)) {
-    console.warn('Unexpected GraphQL response shape:', json);
-    return [];
+  if (!article) {
+    throw new Error('No article item found in GraphQL response');
   }
 
-  return items;
+  return article;
 }
 
 /**
- * Build a single article DOM element with UE-friendly attributes.
+ * Renders the article into the block.
  */
-function buildArticleElement(article) {
-  const { _path, headline, main, heroImage } = article;
+function renderArticle(block, article, cfg) {
+  const { path, variation } = cfg;
+
+  // Clear block contents
+  block.innerHTML = '';
 
   const articleEl = document.createElement('article');
-  articleEl.classList.add('content-fragment');
-  // UE instrumentation – allows UE to open the CF referenced by this block item
+  articleEl.classList.add('content-fragment-article');
+
+  // UE instrumentation for the CF itself
   articleEl.dataset.aueType = 'reference';
-  articleEl.dataset.aueResource = _path;
-
-  // Hero image (if present)
-  if (heroImage) {
-    const pictureWrapper = document.createElement('div');
-    pictureWrapper.classList.add('content-fragment-hero');
-
-    const img = document.createElement('img');
-    const imgUrl = heroImage._dynamicUrl || heroImage._publishUrl || '';
-    img.src = imgUrl;
-    img.alt = headline || '';
-
-    img.loading = 'lazy';
-
-    // UE instrumentation – maps to the heroImage element of the CF
-    img.dataset.aueProp = 'heroImage';
-    img.dataset.aueType = 'media';
-
-    pictureWrapper.appendChild(img);
-    articleEl.appendChild(pictureWrapper);
-  }
-
-  // Text content wrapper
-  const bodyWrapper = document.createElement('div');
-  bodyWrapper.classList.add('content-fragment-body');
+  articleEl.dataset.aueResource = path;
+  articleEl.dataset.aueProp = 'article';
+  articleEl.dataset.aueVariation = variation;
 
   // Headline
-  if (headline) {
+  if (article.headline) {
     const h2 = document.createElement('h2');
     h2.classList.add('content-fragment-headline');
-    h2.textContent = headline;
+    h2.textContent = article.headline;
 
-    // UE instrumentation – headline field in the model
-    h2.dataset.aueProp = 'headline';
+    // UE instrumentation for the headline element
     h2.dataset.aueType = 'text';
-
-    bodyWrapper.appendChild(h2);
+    h2.dataset.aueProp = 'headline';
+    articleEl.appendChild(h2);
   }
 
-  // Main text
-  const mainText = main?.plaintext;
-  if (mainText) {
-    const p = document.createElement('p');
-    p.classList.add('content-fragment-main');
+  // Hero image
+  const hero = article.heroImage;
+  if (hero) {
+    const img = document.createElement('img');
+    img.classList.add('content-fragment-hero-image');
 
-    // Basic newline handling
-    p.textContent = mainText;
+    const src = hero._dynamicUrl || hero._publishUrl || hero._authorUrl;
+    if (src) {
+      img.src = src;
+    }
 
-    // UE instrumentation – main field in the model
-    p.dataset.aueProp = 'main';
-    p.dataset.aueType = 'richtext';
+    img.alt = article.headline || '';
 
-    bodyWrapper.appendChild(p);
+    // UE instrumentation for the hero image asset
+    img.dataset.aueType = 'asset';
+    img.dataset.aueProp = 'heroImage';
+    if (hero._path) {
+      img.dataset.aueResource = hero._path;
+    }
+
+    articleEl.appendChild(img);
   }
 
-  articleEl.appendChild(bodyWrapper);
-  return articleEl;
+  // You can also surface metadata if useful
+  // Example: output all stringMetadata entries
+  if (Array.isArray(article._metadata?.stringMetadata) && article._metadata.stringMetadata.length > 0) {
+    const metaContainer = document.createElement('dl');
+    metaContainer.classList.add('content-fragment-metadata');
+
+    article._metadata.stringMetadata.forEach((m) => {
+      const dt = document.createElement('dt');
+      dt.textContent = m.name;
+      const dd = document.createElement('dd');
+      dd.textContent = m.value;
+      metaContainer.append(dt, dd);
+    });
+
+    articleEl.appendChild(metaContainer);
+  }
+
+  block.appendChild(articleEl);
 }
 
 /**
- * Block decorate function.
- * Renders up to 3 articles from the persisted query.
+ * Default block decorator.
  */
 export default async function decorate(block) {
-  block.classList.add('content-fragment-block');
+  const cfg = getFragmentConfigFromBlock(block);
+
+  if (!cfg || !cfg.path) {
+    console.warn('content-fragment: missing path/variation configuration');
+    return;
+  }
 
   try {
-    const articles = await fetchArticles(3);
-
-    if (!articles.length) {
-      block.textContent = 'No articles available.';
-      return;
-    }
-
-    // Clear any authoring placeholder content
-    block.innerHTML = '';
-
-    const listEl = document.createElement('div');
-    listEl.classList.add('content-fragment-list');
-
-    articles.forEach((article) => {
-      const articleEl = buildArticleElement(article);
-      listEl.appendChild(articleEl);
-    });
-
-    block.appendChild(listEl);
+    const article = await fetchArticle(cfg.path, cfg.variation);
+    renderArticle(block, article, cfg);
   } catch (e) {
-    /* eslint-disable no-console */
-    console.error('Failed to load articles', e);
-    /* eslint-enable no-console */
-
-    block.textContent = 'Unable to load articles at this time.';
+    console.error('Failed to load content fragment article', e);
+    block.innerHTML = '<p>Failed to load content.</p>';
   }
 }

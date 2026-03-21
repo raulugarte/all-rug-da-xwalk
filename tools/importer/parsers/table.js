@@ -19,9 +19,11 @@ export default function parse(element, { document }) {
   const headerRow = [];
 
   if (headerTable) {
-    // First column header (Feature label - empty in source)
+    // First column header (Feature label)
+    // md2jcr requires every cell to map to a model field, so provide content + hint
     const col1Frag = document.createDocumentFragment();
     col1Frag.appendChild(document.createComment(' field:column1text '));
+    col1Frag.appendChild(document.createTextNode('Features'));
     headerRow.push(col1Frag);
 
     // Product column headers (3 products)

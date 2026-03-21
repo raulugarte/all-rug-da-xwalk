@@ -1,166 +1,151 @@
-import { createOptimizedPicture } from '../../scripts/aem.js';
-
-/**
- * GraphQL endpoint from AEM:
- * /content/cq:graphql/securbank/endpoint
- * 
- * In most AEM setups it's recommended to use the .json extension for JSON output.
- * If your endpoint does not use .json, change GRAPHQL_ENDPOINT accordingly.
- */
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleList';
-                    
-
-const ARTICLE_QUERY = `
-  query ArticleList {
-    articleList(
-      limit: 3
-      _assetTransform: {
-        format: WEBP
-        quality: 85
-      }
-    ) {
-      items {
-        _path
-        headline
-        main {
-          plaintext
-        }
-        heroImage {
-          ... on ImageRef {
-            _publishUrl
-            _dynamicUrl
-          }
-        }
-      }
-    }
-  }
-`;
 
 /**
- * Fetch articles from AEM GraphQL.
+ * Fetch articles via persisted GraphQL query.
+ * Assumes response:
+ * {
+ *   data: {
+ *     articleList: {
+ *       items: [
+ *         {
+ *           _path,
+ *           headline,
+ *           main: { plaintext },
+ *           heroImage: { _dynamicUrl, _publishUrl }
+ *         }
+ *       ]
+ *     }
+ *   }
+ * }
  */
-async function fetchArticles() {
-  const response = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
+async function fetchArticles(limit = 3) {
+  const url = new URL(GRAPHQL_ENDPOINT, window.location.origin);
+  // If your persisted query defines a $limit variable, this will be used.
+  url.searchParams.set('limit', String(limit));
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
-    body: JSON.stringify({ query: ARTICLE_QUERY }),
   });
 
-  if (!response.ok) {
-    throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`);
+  if (!res.ok) {
+    throw new Error(`GraphQL request failed: ${res.status}`);
   }
 
-  const json = await response.json();
-  if (json.errors && json.errors.length) {
-    // eslint-disable-next-line no-console
-    console.error('GraphQL errors:', json.errors);
-    throw new Error('GraphQL returned errors');
+  const json = await res.json();
+  const items = json?.data?.articleList?.items;
+
+  if (!Array.isArray(items)) {
+    console.warn('Unexpected GraphQL response shape:', json);
+    return [];
   }
 
-  return json.data?.articleList?.items || [];
+  return items;
 }
 
 /**
- * Build a single article card DOM.
+ * Build a single article DOM element with UE-friendly attributes.
  */
-function renderArticle(article) {
+function buildArticleElement(article) {
   const { _path, headline, main, heroImage } = article;
 
   const articleEl = document.createElement('article');
-  articleEl.className = 'content-fragment__item';
-
-  // Instrument the CF for Universal Editor:
-  // - data-aue-resource points to the CF data node
-  // - child elements use data-aue-prop for individual fields
-  const cfDataPath = `${_path}/jcr:content/data/master`;
-  articleEl.dataset.aueResource = `urn:aemconnection:${cfDataPath}`;
+  articleEl.classList.add('content-fragment');
+  // UE instrumentation – allows UE to open the CF referenced by this block item
   articleEl.dataset.aueType = 'reference';
+  articleEl.dataset.aueResource = _path;
 
-  // Image (heroImage)
-  if (heroImage && (heroImage._dynamicUrl || heroImage._publishUrl)) {
-    const heroUrl = heroImage._dynamicUrl || heroImage._publishUrl;
-    const picture = createOptimizedPicture(heroUrl, headline || 'Article hero image', true);
-    picture.classList.add('content-fragment__image');
-    picture.dataset.aueProp = 'heroImage';
-    picture.dataset.aueType = 'media';
-    articleEl.appendChild(picture);
+  // Hero image (if present)
+  if (heroImage) {
+    const pictureWrapper = document.createElement('div');
+    pictureWrapper.classList.add('content-fragment-hero');
+
+    const img = document.createElement('img');
+    const imgUrl = heroImage._dynamicUrl || heroImage._publishUrl || '';
+    img.src = imgUrl;
+    img.alt = headline || '';
+
+    img.loading = 'lazy';
+
+    // UE instrumentation – maps to the heroImage element of the CF
+    img.dataset.aueProp = 'heroImage';
+    img.dataset.aueType = 'media';
+
+    pictureWrapper.appendChild(img);
+    articleEl.appendChild(pictureWrapper);
   }
 
-  const body = document.createElement('div');
-  body.className = 'content-fragment__body';
+  // Text content wrapper
+  const bodyWrapper = document.createElement('div');
+  bodyWrapper.classList.add('content-fragment-body');
 
   // Headline
   if (headline) {
     const h2 = document.createElement('h2');
-    h2.className = 'content-fragment__headline';
+    h2.classList.add('content-fragment-headline');
     h2.textContent = headline;
+
+    // UE instrumentation – headline field in the model
     h2.dataset.aueProp = 'headline';
     h2.dataset.aueType = 'text';
-    body.appendChild(h2);
+
+    bodyWrapper.appendChild(h2);
   }
 
-  // Main text (plaintext)
-  if (main?.plaintext) {
+  // Main text
+  const mainText = main?.plaintext;
+  if (mainText) {
     const p = document.createElement('p');
-    p.className = 'content-fragment__main';
-    p.textContent = main.plaintext;
+    p.classList.add('content-fragment-main');
+
+    // Basic newline handling
+    p.textContent = mainText;
+
+    // UE instrumentation – main field in the model
     p.dataset.aueProp = 'main';
     p.dataset.aueType = 'richtext';
-    body.appendChild(p);
+
+    bodyWrapper.appendChild(p);
   }
 
-  articleEl.appendChild(body);
+  articleEl.appendChild(bodyWrapper);
   return articleEl;
 }
 
 /**
- * Default block decorator.
- * @param {Element} block
+ * Block decorate function.
+ * Renders up to 3 articles from the persisted query.
  */
 export default async function decorate(block) {
-  // Avoid double-initialization
-  if (block.dataset.initialized) return;
-  block.dataset.initialized = 'true';
-
-  block.classList.add('content-fragment');
-
-  // Optional: show a simple loading state
-  const loading = document.createElement('div');
-  loading.className = 'content-fragment__loading';
-  loading.textContent = 'Loading articles…';
-  block.innerHTML = '';
-  block.appendChild(loading);
+  block.classList.add('content-fragment-block');
 
   try {
-    const articles = await fetchArticles();
+    const articles = await fetchArticles(3);
 
-    block.innerHTML = '';
     if (!articles.length) {
-      const empty = document.createElement('p');
-      empty.className = 'content-fragment__empty';
-      empty.textContent = 'No articles available.';
-      block.appendChild(empty);
+      block.textContent = 'No articles available.';
       return;
     }
 
-    const list = document.createElement('div');
-    list.className = 'content-fragment__list';
+    // Clear any authoring placeholder content
+    block.innerHTML = '';
+
+    const listEl = document.createElement('div');
+    listEl.classList.add('content-fragment-list');
 
     articles.forEach((article) => {
-      const item = renderArticle(article);
-      list.appendChild(item);
+      const articleEl = buildArticleElement(article);
+      listEl.appendChild(articleEl);
     });
 
-    block.appendChild(list);
+    block.appendChild(listEl);
   } catch (e) {
-    // eslint-disable-next-line no-console
+    /* eslint-disable no-console */
     console.error('Failed to load articles', e);
-    block.innerHTML = '';
-    const error = document.createElement('p');
-    error.className = 'content-fragment__error';
-    error.textContent = 'Unable to load articles.';
-    block.appendChild(error);
+    /* eslint-enable no-console */
+
+    block.textContent = 'Unable to load articles at this time.';
   }
 }

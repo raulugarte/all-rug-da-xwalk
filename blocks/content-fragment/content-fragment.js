@@ -7,7 +7,8 @@ import { createOptimizedPicture } from '../../scripts/aem.js';
  * In most AEM setups it's recommended to use the .json extension for JSON output.
  * If your endpoint does not use .json, change GRAPHQL_ENDPOINT accordingly.
  */
-const GRAPHQL_ENDPOINT = '/content/cq:graphql/securbank/endpoint.json';
+const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleList';
+                    
 
 const ARTICLE_QUERY = `
   query ArticleList {

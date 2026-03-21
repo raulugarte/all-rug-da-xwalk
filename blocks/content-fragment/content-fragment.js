@@ -1,4 +1,5 @@
-const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleList';
+const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath;path=;variation=';
+
 
 /**
  * Fetch articles via persisted GraphQL query.

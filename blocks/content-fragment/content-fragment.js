@@ -1,7 +1,6 @@
 import { getMetadata } from '../../scripts/aem.js';
-import { isAuthorEnvironment, moveInstrumentation } from '../../scripts/scripts.js';
-import { getHostname, mapAemPathToSitePath } from '../../scripts/utils.js';
-import { readBlockConfig } from '../../scripts/aem.js';
+import { isAuthorEnvironment } from '../../scripts/scripts.js';
+import { getHostname } from '../../scripts/utils.js';
 
 /**
  *
@@ -11,30 +10,39 @@ export default async function decorate(block) {
   // Configuration
   const CONFIG = {
     WRAPPER_SERVICE_URL: 'https://3635370-refdemoapigateway-stage.adobeioruntime.net/api/v1/web/ref-demo-api-gateway/fetch-cf',
-    // CHANGED: use article persisted query instead of CTA
+    // Adjust this to your actual persisted query name if different
     GRAPHQL_QUERY: '/graphql/execute.json/ref-demo-eds/ArticleByPath',
-    EXCLUDED_THEME_KEYS: new Set(['brandSite', 'brandLogo']),
   };
 
   const hostnameFromPlaceholders = await getHostname();
   const hostname = hostnameFromPlaceholders ? hostnameFromPlaceholders : getMetadata('hostname');
   const aemauthorurl = getMetadata('authorurl') || '';
-
   const aempublishurl = hostname?.replace('author', 'publish')?.replace(/\/$/, '');
 
-  // const persistedquery = '/graphql/execute.json/ref-demo-eds/ArticleByPath';
-
-  // Block config / authoring inputs
+  // Read configuration from block content:
+  // 1: CF path (reference)
+  // 2: variation (contentFragmentVariation)
+  // 3: display style (displaystyle)
+  // 4: alignment (alignment)
   const contentPath = block.querySelector(':scope div:nth-child(1) > div a')?.textContent?.trim();
   const variationname =
-    block.querySelector(':scope div:nth-child(2) > div')?.textContent?.trim()?.toLowerCase()?.replace(' ', '_') ||
-    'master';
+    block
+      .querySelector(':scope div:nth-child(2) > div')
+      ?.textContent?.trim()
+      ?.toLowerCase()
+      ?.replace(' ', '_') || 'master';
   const displayStyle = block.querySelector(':scope div:nth-child(3) > div')?.textContent?.trim() || '';
   const alignment = block.querySelector(':scope div:nth-child(4) > div')?.textContent?.trim() || '';
-  const ctaStyle = block.querySelector(':scope div:nth-child(5) > div')?.textContent?.trim() || 'button';
 
   block.innerHTML = '';
   const isAuthor = isAuthorEnvironment();
+
+  if (!contentPath) {
+    // No CF path configured – nothing to render
+    // eslint-disable-next-line no-console
+    console.warn('Content Fragment block: no content path provided');
+    return;
+  }
 
   // Prepare request configuration based on environment
   const requestConfig = isAuthor
@@ -63,7 +71,9 @@ export default async function decorate(block) {
     });
 
     if (!response.ok) {
-      console.error(`Error making article CF GraphQL request: ${response.status} ${response.statusText}`, {
+      // eslint-disable-next-line no-console
+      console.error(`Error making CF GraphQL request: ${response.status}`, {
+        status: response.status,
         contentPath,
         variationname,
         isAuthor,
@@ -76,7 +86,8 @@ export default async function decorate(block) {
     try {
       offer = await response.json();
     } catch (parseError) {
-      console.error('Error parsing article JSON from response:', {
+      // eslint-disable-next-line no-console
+      console.error('Error parsing JSON from GraphQL response:', {
         error: parseError.message,
         stack: parseError.stack,
         contentPath,
@@ -87,10 +98,12 @@ export default async function decorate(block) {
       return;
     }
 
-    // CHANGED: root field for article model
+    // Expecting persisted query "ArticleByPath" with root "articleByPath"
+    // and fields: headline (string), main (rich text), heroImage (content reference)
     const cfReq = offer?.data?.articleByPath?.item;
 
     if (!cfReq) {
+      // eslint-disable-next-line no-console
       console.error('Error parsing response from GraphQL request - no valid article data found', {
         response: offer,
         contentPath,
@@ -100,11 +113,8 @@ export default async function decorate(block) {
       return;
     }
 
-    // Set up block attributes
+    // Set up block authoring attributes
     const itemId = `urn:aemconnection:${contentPath}/jcr:content/data/${variationname}`;
-    block.setAttribute('data-aue-type', 'container');
-
-    // CHANGED: heroImage field instead of bannerimage
     const imgUrl = isAuthor ? cfReq.heroImage?._authorUrl : cfReq.heroImage?._publishUrl;
 
     // Determine the layout style
@@ -118,47 +128,46 @@ export default async function decorate(block) {
     let bannerDetailStyle = '';
 
     if (isImageLeft || isImageRight || isImageTop || isImageBottom) {
+      // image-left/right/top/bottom -> image as background of outer wrapper
       bannerContentStyle = imgUrl ? `background-image: url(${imgUrl});` : '';
     } else {
-      // Default layout: image as background with gradient overlay
+      // Default layout: image as background with gradient overlay (original behavior)
       bannerDetailStyle = imgUrl
         ? `background-image: linear-gradient(90deg,rgba(0,0,0,0.6), rgba(0,0,0,0.1) 80%) ,url(${imgUrl});`
         : '';
     }
 
-    // NOTE: article model has no CTA in your requirements, so we drop CTA rendering.
-    // If you later add CTA fields to the article model, you can reintroduce this logic.
-
-    block.innerHTML = `<div class="banner-content block ${displayStyle}"
-        data-aue-resource="${itemId}"
-        data-aue-label="${variationname || 'Elements'}"
-        data-aue-type="reference"
-        data-aue-filter="contentfragment"
-        style="${bannerContentStyle}">
+    block.innerHTML = `
+      <div class="banner-content block ${displayStyle}"
+           data-aue-resource="${itemId}"
+           data-aue-label="${variationname || 'Elements'}"
+           data-aue-type="reference"
+           data-aue-filter="contentfragment"
+           style="${bannerContentStyle}">
         <div class="banner-detail ${alignment}"
-          style="${bannerDetailStyle}"
-          data-aue-prop="heroImage"
-          data-aue-label="Hero Image"
-          data-aue-type="media">
-          <h2
-            data-aue-prop="headline"
-            data-aue-label="Headline"
-            data-aue-type="text"
-            class="cftitle">
+             style="${bannerDetailStyle}"
+             data-aue-prop="heroImage"
+             data-aue-label="Hero Image"
+             data-aue-type="media">
+          <h2 data-aue-prop="headline"
+              data-aue-label="Headline"
+              data-aue-type="text"
+              class="cftitle">
             ${cfReq?.headline || ''}
           </h2>
-          <div
-            data-aue-prop="main"
-            data-aue-label="Main"
-            data-aue-type="richtext"
-            class="cfdescription">
+          <div data-aue-prop="main"
+               data-aue-label="Main"
+               data-aue-type="richtext"
+               class="cfdescription">
             <p>${cfReq?.main?.plaintext || ''}</p>
           </div>
         </div>
         <div class="banner-logo"></div>
-      </div>`;
+      </div>
+    `;
   } catch (error) {
-    console.error('Error rendering article content fragment:', {
+    // eslint-disable-next-line no-console
+    console.error('Error rendering content fragment:', {
       error: error.message,
       stack: error.stack,
       contentPath,
@@ -167,11 +176,4 @@ export default async function decorate(block) {
     });
     block.innerHTML = '';
   }
-
-  /*
-  if (!isAuthor) {
-    moveInstrumentation(block, null);
-    block.querySelectorAll('*').forEach((elem) => moveInstrumentation(elem, null));
-  }
-  */
 }

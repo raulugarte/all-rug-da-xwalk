@@ -1,42 +1,17 @@
+/**
+ * GraphQL endpoint for the ArticleByPath persisted query.
+ *
+ * If you've persisted the query as:
+ *   securbank/ArticleByPath
+ * the default EDS/AEM URL is:
+ *   /graphql/execute.json/securbank/ArticleByPath
+ *
+ * Keep this relative so it works on both author and publish.
+ */
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Reads CF config from the block.
- * Assumes a table like:
- *
- * | Path                                        | Variation |
- * | /content/dam/securbank/.../my-article      | main      |
- *
- * If Variation is empty, defaults to 'main'.
- */
-function getFragmentConfigFromBlock(block) {
-  const table = block.querySelector('table');
-  if (!table) {
-    return null;
-  }
-
-  const rows = table.rows;
-  if (!rows || rows.length < 2) {
-    return null;
-  }
-
-  const cells = rows[1].cells;
-  if (!cells || cells.length === 0) {
-    return null;
-  }
-
-  const path = cells[0]?.textContent?.trim() || '';
-  // Default variation is 'main' (per your requirement)
-  const variation = cells[1]?.textContent?.trim() || 'main';
-
-  // Remove authoring table from the rendered content
-  table.remove();
-
-  return { path, variation };
-}
-
-/**
- * Calls the ArticleByPath persisted query.
+ * GraphQL query name and variables:
  *
  * query ArticleByPath($path: String!, $variation: String!) {
  *   articleByPath(_path: $path, variation: $variation) {
@@ -64,125 +39,199 @@ function getFragmentConfigFromBlock(block) {
  *   }
  * }
  */
-async function fetchArticle(path, variation) {
+
+/**
+ * Try to extract fragment config (path + variation) from the block.
+ *
+ * Supported patterns:
+ *  1. data-fragment-path / data-fragment-variation on the block
+ *  2. <table> with first row: [path, variation]
+ *  3. Simple children: first child text = path, second child text = variation
+ *
+ * Default variation: "main"
+ *
+ * @param {HTMLElement} block
+ * @returns {{ path: string, variation: string } | null}
+ */
+function getFragmentConfigFromBlock(block) {
+  // 1) Data attributes on the block itself (recommended)
+  let path =
+    block.dataset.fragmentPath?.trim() ||
+    block.dataset.aueResource?.trim() || // fallback if UE puts path here
+    '';
+
+  let variation =
+    block.dataset.fragmentVariation?.trim() ||
+    'main'; // default variation
+
+  // If we already have a path from data attributes, we're done
+  if (path) {
+    return { path, variation };
+  }
+
+  // 2) Table-based configuration (classic xwalk pattern)
+  const table = block.querySelector('table');
+  if (table) {
+    const rows = table.rows;
+    if (rows.length > 0) {
+      const firstRow = rows[0];
+      const pathCell = firstRow.cells[0];
+      const variationCell = firstRow.cells[1];
+
+      if (pathCell) {
+        path = pathCell.textContent.trim();
+      }
+      if (variationCell && variationCell.textContent.trim()) {
+        variation = variationCell.textContent.trim();
+      }
+    }
+
+    if (path) {
+      return { path, variation };
+    }
+  }
+
+  // 3) Simple children: first child = path, second child = variation
+  const directChildren = Array.from(block.children).filter(
+    (el) => !el.matches('picture, img') && !el.matches('table'),
+  );
+
+  if (directChildren.length > 0) {
+    const first = directChildren[0];
+    const second = directChildren[1];
+
+    if (!path && first) {
+      path = first.textContent.trim();
+    }
+    if (second && second.textContent.trim()) {
+      variation = second.textContent.trim();
+    }
+  }
+
   if (!path) {
-    throw new Error('Content Fragment path is required');
+    // Nothing found – log and skip
+    console.warn('content-fragment: missing path/variation configuration', {
+      block,
+    });
+    return null;
   }
 
-  const url = new URL(GRAPHQL_ENDPOINT, window.location.origin);
-  url.searchParams.set('path', path);
-  url.searchParams.set('variation', variation || 'main');
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`GraphQL request failed: ${res.status}`);
-  }
-
-  const json = await res.json();
-  const article = json?.data?.articleByPath?.item;
-
-  if (!article) {
-    throw new Error('No article item found in GraphQL response');
-  }
-
-  return article;
+  return { path, variation };
 }
 
 /**
- * Renders the article into the block.
+ * Call the ArticleByPath persisted query for a given path + variation.
+ *
+ * @param {string} path
+ * @param {string} variation
+ * @returns {Promise<object|null>} article item or null
  */
-function renderArticle(block, article, cfg) {
-  const { path, variation } = cfg;
+async function fetchArticleByPath(path, variation) {
+  // We assume "path" and "variation" can be passed as query parameters to the persisted query.
+  const url = new URL(GRAPHQL_ENDPOINT, window.location.origin);
+  url.searchParams.set('path', path);
+  url.searchParams.set('variation', variation);
 
-  // Clear block contents
-  block.innerHTML = '';
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  });
 
-  const articleEl = document.createElement('article');
-  articleEl.classList.add('content-fragment-article');
+  if (!response.ok) {
+    throw new Error(`GraphQL request failed: ${response.status}`);
+  }
 
-  // UE instrumentation for the CF itself
-  articleEl.dataset.aueType = 'reference';
-  articleEl.dataset.aueResource = path;
-  articleEl.dataset.aueProp = 'article';
-  articleEl.dataset.aueVariation = variation;
+  const json = await response.json();
+
+  if (!json.data || !json.data.articleByPath || !json.data.articleByPath.item) {
+    console.warn('content-fragment: no item found in GraphQL response', json);
+    return null;
+  }
+
+  return json.data.articleByPath.item;
+}
+
+/**
+ * Create DOM for a single article item.
+ *
+ * @param {object} article
+ * @returns {HTMLElement}
+ */
+function renderArticle(article) {
+  const container = document.createElement('article');
+  container.classList.add('cf-article');
+  // UE instrumentation
+  if (article._path) {
+    container.dataset.aueType = 'reference';
+    container.dataset.aueResource = article._path;
+  }
 
   // Headline
   if (article.headline) {
     const h2 = document.createElement('h2');
-    h2.classList.add('content-fragment-headline');
+    h2.classList.add('cf-headline');
     h2.textContent = article.headline;
-
-    // UE instrumentation for the headline element
-    h2.dataset.aueType = 'text';
     h2.dataset.aueProp = 'headline';
-    articleEl.appendChild(h2);
+    h2.dataset.aueType = 'text';
+    container.appendChild(h2);
   }
 
   // Hero image
-  const hero = article.heroImage;
-  if (hero) {
+  if (article.heroImage && article.heroImage._dynamicUrl) {
+    const picture = document.createElement('picture');
+    picture.classList.add('cf-hero');
+
     const img = document.createElement('img');
-    img.classList.add('content-fragment-hero-image');
-
-    const src = hero._dynamicUrl || hero._publishUrl || hero._authorUrl;
-    if (src) {
-      img.src = src;
-    }
-
+    img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
     img.alt = article.headline || '';
-
-    // UE instrumentation for the hero image asset
-    img.dataset.aueType = 'asset';
+    img.loading = 'lazy';
     img.dataset.aueProp = 'heroImage';
-    if (hero._path) {
-      img.dataset.aueResource = hero._path;
-    }
+    img.dataset.aueType = 'media';
 
-    articleEl.appendChild(img);
+    picture.appendChild(img);
+    container.appendChild(picture);
   }
 
-  // You can also surface metadata if useful
-  // Example: output all stringMetadata entries
-  if (Array.isArray(article._metadata?.stringMetadata) && article._metadata.stringMetadata.length > 0) {
-    const metaContainer = document.createElement('dl');
-    metaContainer.classList.add('content-fragment-metadata');
-
-    article._metadata.stringMetadata.forEach((m) => {
-      const dt = document.createElement('dt');
-      dt.textContent = m.name;
-      const dd = document.createElement('dd');
-      dd.textContent = m.value;
-      metaContainer.append(dt, dd);
-    });
-
-    articleEl.appendChild(metaContainer);
-  }
-
-  block.appendChild(articleEl);
+  // You can extend this to render metadata, variations, etc.
+  return container;
 }
 
 /**
- * Default block decorator.
+ * Decorate function called by the block loader.
+ *
+ * @param {HTMLElement} block
  */
 export default async function decorate(block) {
   const cfg = getFragmentConfigFromBlock(block);
 
-  if (!cfg || !cfg.path) {
-    console.warn('content-fragment: missing path/variation configuration');
+  if (!cfg) {
+    // Configuration missing, nothing to render
     return;
   }
 
   try {
-    const article = await fetchArticle(cfg.path, cfg.variation);
-    renderArticle(block, article, cfg);
+    const article = await fetchArticleByPath(cfg.path, cfg.variation);
+
+    // Clear the original content (table/placeholder)
+    block.textContent = '';
+
+    if (!article) {
+      const msg = document.createElement('p');
+      msg.classList.add('cf-empty');
+      msg.textContent = 'No article found for the given path/variation.';
+      block.appendChild(msg);
+      return;
+    }
+
+    const articleEl = renderArticle(article);
+    block.appendChild(articleEl);
   } catch (e) {
-    console.error('Failed to load content fragment article', e);
-    block.innerHTML = '<p>Failed to load content.</p>';
+    console.error('content-fragment: failed to load article', e);
+    const errorMsg = document.createElement('p');
+    errorMsg.classList.add('cf-error');
+    errorMsg.textContent = 'There was a problem loading the article.';
+    block.appendChild(errorMsg);
   }
 }

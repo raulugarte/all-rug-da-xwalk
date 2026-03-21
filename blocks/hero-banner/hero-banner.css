@@ -5,17 +5,18 @@
 
 .hero-banner {
   position: relative;
-  min-height: 480px;
   display: flex;
-  align-items: flex-end;
-  overflow: hidden;
+  flex-direction: column;
+  overflow: visible;
+  background-color: var(--color-white);
 }
 
 /* Background image layer */
 .hero-banner .hero-banner-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+  position: relative;
+  width: 100%;
+  height: 340px;
+  overflow: hidden;
 }
 
 .hero-banner .hero-banner-bg img {
@@ -24,61 +25,77 @@
   object-fit: cover;
 }
 
-/* Text overlay */
+/* White card overlay */
 .hero-banner .hero-banner-content {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 40px 24px;
-  color: var(--background-color);
+  max-width: var(--content-max-width);
+  width: calc(100% - 32px);
+  margin: -80px auto 0;
+  padding: 24px;
+  background-color: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(4, 19, 33, 0.18);
+  color: var(--text-color);
 }
 
+/* Eyebrow heading */
 .hero-banner .hero-banner-content h1 {
-  color: var(--background-color);
-  font-size: var(--heading-font-size-xl);
-  margin-bottom: 8px;
+  color: rgb(63, 114, 177);
+  font-size: var(--body-font-size-m);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0 0 16px;
+  letter-spacing: -0.08px;
 }
 
+/* Subheading / description */
 .hero-banner .hero-banner-content p {
-  color: var(--background-color);
-  font-size: var(--body-font-size-l);
+  color: var(--color-allianz-blue);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
   margin: 0 0 16px;
 }
 
-/* CTA buttons */
+/* CTA button */
 .hero-banner .hero-banner-content .button-container {
   display: inline-block;
-  margin-right: 16px;
-  margin-bottom: 0;
+  margin: 8px 16px 0 0;
 }
 
 .hero-banner .hero-banner-content a.button {
-  background-color: var(--background-color);
-  color: var(--link-color);
-  border: 2px solid var(--background-color);
-  border-radius: 4px;
-  padding: 12px 24px;
-  font-weight: 600;
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+  border: none;
+  border-radius: 8px;
+  padding: 16px 32px;
+  font-weight: 700;
+  font-size: var(--body-font-size-m);
   text-decoration: none;
 }
 
 .hero-banner .hero-banner-content a.button:hover {
-  background-color: transparent;
-  color: var(--background-color);
+  background-color: var(--color-dark-navy);
+  color: var(--color-white);
 }
 
 @media (width >= 900px) {
-  .hero-banner {
-    min-height: 560px;
+  .hero-banner .hero-banner-bg {
+    height: 384px;
   }
 
   .hero-banner .hero-banner-content {
-    padding: 60px 32px;
+    margin-top: -112px;
+    padding: 32px;
+    max-width: 700px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
   }
 
-  .hero-banner .hero-banner-content h1 {
-    font-size: var(--heading-font-size-xxl);
+  .hero-banner .hero-banner-content p {
+    font-size: 32px;
+    line-height: 1;
   }
 }

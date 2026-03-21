@@ -90,29 +90,48 @@ export default function parse(element, { document }) {
     });
   }
 
-  // Fallback: Shadow DOM unavailable - use known homepage hero content
+  // Fallback: Shadow DOM unavailable - derive content from page metadata
   if (!hasContent) {
+    // Extract heading from <title> (part before first "|")
+    const titleText = document.title || '';
+    const titleParts = titleText.split('|');
+    let pageHeading = titleParts[0].trim();
+    // Clean up common title suffixes like "Quotes", "Quote", "Options"
+    pageHeading = pageHeading
+      .replace(/\s+Quotes?\b/i, '')
+      .replace(/\s*\|\s*Compare\s+Options/i, '')
+      .trim();
+    if (!pageHeading) pageHeading = 'Allianz Insurance';
+
     const h1 = document.createElement('h1');
-    h1.textContent = 'Allianz Insurance';
+    h1.textContent = pageHeading;
     contentCell.appendChild(h1);
 
+    // Extract subtitle from meta description (first sentence)
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const descContent = metaDesc ? metaDesc.getAttribute('content') : '';
+    let subtitleText = '';
+    if (descContent) {
+      // Take first sentence (up to first period followed by space or end)
+      const firstSentence = descContent.split(/\.\s/)[0].trim();
+      subtitleText = firstSentence.length > 80
+        ? firstSentence.substring(0, 80).trim()
+        : firstSentence;
+      if (!subtitleText.endsWith('.')) subtitleText += '.';
+    }
+    if (!subtitleText) subtitleText = 'Care you can count on';
+
     const subtitle = document.createElement('p');
-    subtitle.textContent = 'Care you can count on';
+    subtitle.textContent = subtitleText;
     contentCell.appendChild(subtitle);
 
+    // Single CTA - look for a quote link, default to generic
     const cta1P = document.createElement('p');
     const cta1 = document.createElement('a');
     cta1.href = '#';
     cta1.textContent = 'Get a quote';
     cta1P.appendChild(cta1);
     contentCell.appendChild(cta1P);
-
-    const cta2P = document.createElement('p');
-    const cta2 = document.createElement('a');
-    cta2.href = '/my-allianz/renewals.html';
-    cta2.textContent = 'Renew now';
-    cta2P.appendChild(cta2);
-    contentCell.appendChild(cta2P);
 
     hasContent = true;
   }

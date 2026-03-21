@@ -1,0 +1,154 @@
+/* Cards Cover – product card grid */
+.cards-cover > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+.cards-cover > ul > li {
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card image */
+.cards-cover > ul > li img {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+/* Card body spacing */
+.cards-cover .cards-cover-card-body {
+  margin: 0;
+}
+
+/* Text content div grows to fill card height */
+.cards-cover .cards-cover-card-body:last-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Image container paragraph */
+.cards-cover .cards-cover-card-body p:has(> img) {
+  margin: 0;
+  line-height: 0;
+}
+
+.cards-cover .cards-cover-card-image {
+  line-height: 0;
+}
+
+/* Heading */
+.cards-cover .cards-cover-card-body h3 {
+  color: var(--color-allianz-blue);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 16px 0 12px;
+}
+
+.cards-cover .cards-cover-card-body h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cards-cover .cards-cover-card-body h3 a:hover {
+  text-decoration: underline;
+}
+
+/* Description paragraph */
+.cards-cover .cards-cover-card-body > p {
+  color: var(--color-allianz-blue);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+/* Checklist */
+.cards-cover .cards-cover-card-body ul {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.cards-cover .cards-cover-card-body ul li {
+  color: var(--color-allianz-blue);
+  font-size: 16px;
+  line-height: 24px;
+  padding: 6px 0 6px 36px;
+  position: relative;
+}
+
+/* Checklist icon */
+.cards-cover .cards-cover-card-body ul li .check-icon {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.cards-cover .cards-cover-card-body ul li.check-included .check-icon {
+  color: #3da556;
+}
+
+.cards-cover .cards-cover-card-body ul li.check-excluded .check-icon {
+  color: var(--color-allianz-blue);
+}
+
+/* "Learn more" link – styled as text link with arrow, not a button */
+.cards-cover .cards-cover-card-body .button-container {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.cards-cover .cards-cover-card-body a.button {
+  background: none;
+  border: none;
+  color: var(--color-allianz-blue);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cards-cover .cards-cover-card-body a.button::after {
+  content: "→";
+  font-size: 18px;
+}
+
+.cards-cover .cards-cover-card-body a.button:hover {
+  background: none;
+  color: var(--color-allianz-blue);
+  text-decoration: underline;
+}
+
+/* Desktop: 3-column layout */
+@media (width >= 900px) {
+  .cards-cover > ul {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .cards-cover .cards-cover-card-body h3 {
+    font-size: 30px;
+    line-height: 1.2;
+    margin: 20px 0 24px;
+  }
+}

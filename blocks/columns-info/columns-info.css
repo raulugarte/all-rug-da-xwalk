@@ -1,0 +1,107 @@
+/* Columns Info – 2-column text + image layout */
+.columns-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.columns-info img {
+  width: 100%;
+  display: block;
+  border-radius: 0;
+}
+
+/* On mobile: image first, text second */
+.columns-info > div > div {
+  order: 1;
+}
+
+.columns-info > div > .columns-info-img-col {
+  order: 0;
+}
+
+/* Heading */
+.columns-info h2 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 24px;
+}
+
+/* Paragraph text */
+.columns-info p {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+/* Inline links in text (e.g. NSW, QLD, SA) */
+.columns-info a:not(.button) {
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+/* Checklist */
+.columns-info ul {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.columns-info ul li {
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 6px 0;
+}
+
+/* "Choose your state" button – default: navy filled */
+.columns-info .button-container {
+  margin-top: 12px;
+}
+
+.columns-info .button-container a.button {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  background-color: var(--color-allianz-blue);
+  color: var(--color-white);
+  border: 1px solid var(--color-allianz-blue);
+}
+
+.columns-info .button-container a.button:hover {
+  background-color: var(--color-dark-navy, #002a5c);
+  border-color: var(--color-dark-navy, #002a5c);
+  color: var(--color-white);
+}
+
+
+/* Desktop: side-by-side layout */
+@media (width >= 900px) {
+  .columns-info > div {
+    align-items: start;
+    flex-direction: row;
+    gap: 48px;
+  }
+
+  /* Text column: ~60% */
+  .columns-info > div > div:not(.columns-info-img-col) {
+    flex: 3;
+    order: unset;
+  }
+
+  /* Image column: ~40% */
+  .columns-info > div > .columns-info-img-col {
+    flex: 2;
+    order: unset;
+  }
+
+  .columns-info h2 {
+    font-size: 40px;
+    line-height: 1.2;
+    margin: 0 0 32px;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "status": "success",
+  "url": "http://localhost:9877/car-insurance.html",
+  "path": "car-insurance",
+  "timestamp": "2026-03-20T21:17:38.044Z",
+  "title": "Car Insurance Quotes | Compare Options | Allianz Australia",
+  "template": "car-insurance",
+  "blocks": [
+    "hero-banner",
+    "cards-cover",
+    "table",
+    "columns-actions",
+    "columns-actions",
+    "columns-actions",
+    "columns-actions",
+    "columns-info",
+    "columns-features",
+    "cards-article",
+    "accordion",
+    "accordion",
+    "accordion"
+  ]
+}

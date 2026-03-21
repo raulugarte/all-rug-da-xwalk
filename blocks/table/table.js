@@ -32,4 +32,14 @@ export default async function decorate(block) {
   });
   table.append(thead, tbody);
   block.replaceChildren(table);
+
+  // Style included/not-included indicators
+  block.querySelectorAll('td').forEach((td) => {
+    const text = td.textContent.trim();
+    if (text.startsWith('\u2713') || text.startsWith('\u2714')) {
+      td.classList.add('status-included');
+    } else if (text.startsWith('\u2717') || text.startsWith('\u2718') || text.startsWith('\u2715')) {
+      td.classList.add('status-excluded');
+    }
+  });
 }

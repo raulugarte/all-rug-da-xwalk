@@ -145,6 +145,36 @@
           }
         },
         {
+          "title": "Cards Cover",
+          "id": "cards-cover",
+          "plugins": {
+            "xwalk": {
+              "page": {
+                "resourceType": "core/franklin/components/block/v1/block",
+                "template": {
+                  "name": "Cards Cover",
+                  "filter": "cards-cover"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Card Cover",
+          "id": "card-cover",
+          "plugins": {
+            "xwalk": {
+              "page": {
+                "resourceType": "core/franklin/components/block/v1/block/item",
+                "template": {
+                  "name": "Card Cover",
+                  "model": "card-cover"
+                }
+              }
+            }
+          }
+        },
+        {
           "title": "Cards Product",
           "id": "cards-product",
           "plugins": {
@@ -275,6 +305,22 @@
                 "resourceType": "core/franklin/components/columns/v1/columns",
                 "template": {
                   "name": "Columns Features",
+                  "columns": "2",
+                  "rows": "1"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Columns Info",
+          "id": "columns-info",
+          "plugins": {
+            "xwalk": {
+              "page": {
+                "resourceType": "core/franklin/components/columns/v1/columns",
+                "template": {
+                  "name": "Columns Info",
                   "columns": "2",
                   "rows": "1"
                 }
@@ -444,7 +490,7 @@
                 "template": {
                   "name": "Table",
                   "model": "table",
-                  "filter": "table"
+                  "filter": "table-4-columns"
                 }
               }
             }

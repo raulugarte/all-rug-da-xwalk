@@ -47,6 +47,14 @@ export default function transform(hookName, element, payload) {
     // Found in captured HTML: <div class="anchor"><span id="conditions"></span></div>
     WebImporter.DOMUtils.remove(element, ['.anchor']);
 
+    // Remove sticky product sub-navigation bar (in-page anchor nav)
+    // Found in captured HTML: <div class="product_navigation"> containing
+    // <div class="c-product-nav-bar"> with heading, anchor links, and CTA
+    WebImporter.DOMUtils.remove(element, [
+      '.product_navigation',
+      '.c-product-nav-bar',
+    ]);
+
     // Remove einsure quote links early (quote grid remnants)
     element.querySelectorAll('a[href*="einsure.com.au"]').forEach((a) => {
       const parent = a.parentElement;

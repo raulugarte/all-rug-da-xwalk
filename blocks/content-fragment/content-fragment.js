@@ -1,9 +1,33 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
+ * Normalize the variation value:
+ * - trims whitespace
+ * - treats empty, "undefined", "null", "default" as "no variation"
+ *   (we'll then fall back to "master")
+ */
+function normalizeVariation(raw) {
+  if (raw == null) {
+    return null;
+  }
+
+  const v = String(raw).trim();
+  if (!v) {
+    return null;
+  }
+
+  const lower = v.toLowerCase();
+  if (lower === 'undefined' || lower === 'null' || lower === 'default') {
+    return null;
+  }
+
+  return v;
+}
+
+/**
  * Parse the block text into:
  * - path           (line 1)
- * - variation      (line 2, required for GraphQL + UE)
+ * - variation      (line 2, required for GraphQL + UE, but we default to "master")
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
  * - ctaStyle       (line 5, optional – not used yet)
@@ -73,11 +97,14 @@ async function getCsrfToken() {
  *   }
  * }
  */
-async function fetchArticle(path, variation) {
+async function fetchArticle(path, variationRaw) {
+  // Normalize and ensure we never send "undefined" to GraphQL
+  const normalizedVariation = normalizeVariation(variationRaw) || 'master';
+
   const body = {
     variables: {
       path,
-      variation,
+      variation: normalizedVariation,
     },
   };
 
@@ -119,7 +146,9 @@ async function fetchArticle(path, variation) {
 
     const item = json?.data?.articleByPath?.item;
     if (!item) {
-      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
+      console.warn(
+        `content-fragment: no article returned for ${path} (variation: ${normalizedVariation})`,
+      );
       return null;
     }
 
@@ -134,7 +163,10 @@ async function fetchArticle(path, variation) {
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment, variation } = cfg;
+  const { displayStyle, alignment } = cfg;
+
+  // Use the *effective* variation (normalized or default "master")
+  const effectiveVariation = normalizeVariation(cfg.variation) || 'master';
 
   // Clear original text lines
   block.innerHTML = '';
@@ -158,19 +190,20 @@ function renderArticle(block, article, cfg) {
    *
    * IMPORTANT:
    * - data-aue-resource points to the CF asset path (no /jcr:content/data).
-   * - data-aue-variation is taken from cfg.variation (line 2 of the block).
-   *   This must be "master" or "testvar" etc. — NOT alignment like "text-center".
+   * - data-aue-variation is the *effective* variation ("master" if missing/invalid).
    */
 
-  const cfPath = article._path || cfg.path || null;
+  let cfPath = article._path || cfg.path || null;
   if (cfPath) {
+    // Normalize CF path in case GraphQL returns /jcr:content/data
+    cfPath = cfPath.replace(/\/jcr:content\/data.*$/, '');
+
     wrapper.setAttribute('data-aue-resource', `urn:aemconnection:${cfPath}`);
     wrapper.setAttribute('data-aue-type', 'content-fragment');
     wrapper.setAttribute('data-aue-label', article.headline || cfPath);
 
     // Use the same variation for UE that we use for GraphQL
-    const variationName = (variation && variation.trim()) || 'master';
-    wrapper.setAttribute('data-aue-variation', variationName);
+    wrapper.setAttribute('data-aue-variation', effectiveVariation);
   }
 
   const media = document.createElement('div');
@@ -246,17 +279,27 @@ export default async function decorate(block) {
     return;
   }
 
+  // Normalize variation and default to "master" if missing/invalid
+  const effectiveVariation = normalizeVariation(cfg.variation) || 'master';
+
   if (!cfg.variation) {
-    console.warn(
-      'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
+    console.info(
+      'content-fragment: no variation (second line) provided; defaulting to "master".',
     );
-    return;
+  } else if (effectiveVariation === 'master' && cfg.variation.trim().toLowerCase() !== 'master') {
+    console.warn(
+      `content-fragment: variation "${cfg.variation}" is invalid (e.g. "undefined"); using "master" instead.`,
+    );
   }
 
-  const article = await fetchArticle(cfg.path, cfg.variation);
+  const article = await fetchArticle(cfg.path, effectiveVariation);
   if (!article) {
     return;
   }
 
-  renderArticle(block, article, cfg);
+  // Pass the effective variation down so UE uses the same value
+  renderArticle(block, article, {
+    ...cfg,
+    variation: effectiveVariation,
+  });
 }

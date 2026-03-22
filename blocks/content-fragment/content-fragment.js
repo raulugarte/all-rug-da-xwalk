@@ -3,7 +3,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 /**
  * Parse the block text into:
  * - path           (line 1)
- * - variation      (line 2, required for GraphQL)
+ * - variation      (line 2, required for GraphQL + UE)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
  * - ctaStyle       (line 5, optional – not used yet)
@@ -13,7 +13,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * /content/dam/.../allianz-offer      ← line 1: path
  * testvar                             ← line 2: variation
  * image-left                          ← line 3: style
- * text-left                           ← line 4: alignment
+ * text-center                         ← line 4: alignment
  * cta-link                            ← line 5: CTA style
  */
 function getBlockConfig(block) {
@@ -102,7 +102,11 @@ async function fetchArticle(path, variation) {
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
+      console.error(
+        'content-fragment: GraphQL request failed',
+        resp.status,
+        resp.statusText,
+      );
       return null;
     }
 
@@ -127,22 +131,10 @@ async function fetchArticle(path, variation) {
 }
 
 /**
- * Build the JCR base path for the CF variation:
- * /content/dam/.../jcr:content/data/<variation>
- */
-function getCfVariationBasePath(cfg) {
-  if (!cfg.path || !cfg.variation) {
-    return null;
-  }
-  const normalizedPath = cfg.path.replace(/\/$/, '');
-  return `${normalizedPath}/jcr:content/data/${cfg.variation}`;
-}
-
-/**
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment } = cfg;
+  const { displayStyle, alignment, variation } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -155,11 +147,31 @@ function renderArticle(block, article, cfg) {
     block.classList.add(displayStyle); // e.g. "image-left"
   }
   if (alignment) {
-    block.classList.add(alignment); // e.g. "text-left"
+    block.classList.add(alignment); // e.g. "text-center"
   }
 
   const wrapper = document.createElement('div');
   wrapper.className = 'content-fragment-inner';
+
+  /**
+   * Universal Editor instrumentation
+   *
+   * IMPORTANT:
+   * - data-aue-resource points to the CF asset path (no /jcr:content/data).
+   * - data-aue-variation is taken from cfg.variation (line 2 of the block).
+   *   This must be "master" or "testvar" etc. — NOT alignment like "text-center".
+   */
+
+  const cfPath = article._path || cfg.path || null;
+  if (cfPath) {
+    wrapper.setAttribute('data-aue-resource', `urn:aemconnection:${cfPath}`);
+    wrapper.setAttribute('data-aue-type', 'content-fragment');
+    wrapper.setAttribute('data-aue-label', article.headline || cfPath);
+
+    // Use the same variation for UE that we use for GraphQL
+    const variationName = (variation && variation.trim()) || 'master';
+    wrapper.setAttribute('data-aue-variation', variationName);
+  }
 
   const media = document.createElement('div');
   media.className = 'content-fragment-media';
@@ -167,18 +179,17 @@ function renderArticle(block, article, cfg) {
   const body = document.createElement('div');
   body.className = 'content-fragment-body';
 
-  // Compute CF variation base path for UE instrumentation
-  const cfBasePath = getCfVariationBasePath(cfg);
-  const ueResourceBase = cfBasePath
-    ? `urn:aemconnection:${cfBasePath}`
-    : null;
-
-  // Hero image (read-only for UE here; we only instrument text fields)
+  // Hero image
   if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
     const img = document.createElement('img');
     img.className = 'content-fragment-image';
     img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
     img.alt = article.headline || '';
+
+    // UE: make hero image editable as a media field on the CF
+    img.setAttribute('data-aue-prop', 'heroImage');
+    img.setAttribute('data-aue-type', 'media');
+
     media.appendChild(img);
   }
 
@@ -188,16 +199,9 @@ function renderArticle(block, article, cfg) {
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
 
-    // UE instrumentation for headline (CF element "headline")
-    if (ueResourceBase) {
-      h2.setAttribute(
-        'data-aue-resource',
-        `${ueResourceBase}/headline`,
-      );
-      h2.setAttribute('data-aue-type', 'text');
-      h2.setAttribute('data-aue-prop', 'text'); // underlying CF element property
-      h2.setAttribute('data-aue-label', 'Headline');
-    }
+    // UE: make headline in-place editable as simple text
+    h2.setAttribute('data-aue-prop', 'headline');
+    h2.setAttribute('data-aue-type', 'text');
 
     body.appendChild(h2);
   }
@@ -207,27 +211,21 @@ function renderArticle(block, article, cfg) {
     const mainEl = document.createElement('div');
     mainEl.className = 'content-fragment-main';
 
+    // UE: map to the CF field "main" as rich text
+    mainEl.setAttribute('data-aue-prop', 'main');
+    mainEl.setAttribute('data-aue-type', 'richtext');
+
     if (article.main.html) {
       // HTML authored in the CF – render as HTML
       mainEl.innerHTML = article.main.html;
     } else if (article.main.markdown) {
+      // If you want markdown rendered as plain text for now
       mainEl.textContent = article.main.markdown;
     } else if (article.main.plaintext) {
       mainEl.textContent = article.main.plaintext;
     } else if (article.main.json) {
       // Fallback: show JSON string (mainly useful for debugging)
       mainEl.textContent = JSON.stringify(article.main.json);
-    }
-
-    // UE instrumentation for main body (CF element "main")
-    if (ueResourceBase) {
-      mainEl.setAttribute(
-        'data-aue-resource',
-        `${ueResourceBase}/main`,
-      );
-      mainEl.setAttribute('data-aue-type', 'richtext');
-      mainEl.setAttribute('data-aue-prop', 'text'); // underlying CF element property
-      mainEl.setAttribute('data-aue-label', 'Main');
     }
 
     body.appendChild(mainEl);

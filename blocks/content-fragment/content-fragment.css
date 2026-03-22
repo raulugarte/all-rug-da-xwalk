@@ -1,103 +1,471 @@
-/* Base block layout */
-.block.content-fragment {
-  box-sizing: border-box;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
+/* =========================================================
+ * Base container
+ * =======================================================*/
 
-/* Inner layout: media + body */
-.content-fragment-inner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-start;
-}
-
-.content-fragment-media {
-  flex: 0 0 40%;
-  max-width: 40%;
-}
-
-.content-fragment-body {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-/* Image */
-.content-fragment-image {
-  display: block;
+.content-fragment-container .content-fragment-wrapper {
   width: 100%;
+  max-width: initial;
+  margin: 0 auto;
+  display: block;
   height: auto;
-  border-radius: 4px;
-  object-fit: cover;
 }
 
-/* Headline */
-.content-fragment-headline {
-  margin: 0 0 0.75rem;
-  font-size: 1.5rem;
-  line-height: 1.3;
+.content-fragment-wrapper .content-fragment {
+  width: 100%;
 }
 
-/* ---------- Style (image placement) ---------- */
+/* =========================================================
+ * Base hero / banner styles (shared across layouts)
+ * =======================================================*/
 
-/* Image Left (default flex direction) */
-.block.content-fragment.image-left .content-fragment-inner {
-  flex-direction: row;
+.content-fragment-wrapper .content-fragment .banner-content {
+  position: relative;
+  width: 100%;
+  display: block;
+  margin: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-/* Image Right */
-.block.content-fragment.image-right .content-fragment-inner {
-  flex-direction: row-reverse;
-}
-
-/* Image Top */
-.block.content-fragment.image-top .content-fragment-inner {
+/* Default layout: full-bleed image with overlay handled in inline style */
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 400px;
+  background-size: cover;
+  background-position: center;
+  margin: 0;
+  padding: 60px;
+  color: var(--text-light);
+  border-radius: inherit;
+  display: flex;
   flex-direction: column;
-}
-
-.block.content-fragment.image-top .content-fragment-media,
-.block.content-fragment.image-top .content-fragment-body {
-  max-width: 100%;
-}
-
-/* Image Bottom */
-.block.content-fragment.image-bottom .content-fragment-inner {
-  flex-direction: column-reverse;
-}
-
-.block.content-fragment.image-bottom .content-fragment-media,
-.block.content-fragment.image-bottom .content-fragment-body {
-  max-width: 100%;
-}
-
-/* ---------- Alignment (text alignment only) ---------- */
-
-.block.content-fragment.text-left .content-fragment-body {
-  text-align: left;
-}
-
-.block.content-fragment.text-right .content-fragment-body {
-  text-align: right;
-}
-
-.block.content-fragment.text-center .content-fragment-body {
+  justify-content: center;
+  align-items: center;
   text-align: center;
 }
 
-/* ---------- Responsive tweaks ---------- */
+/* Basic text spacing */
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail p {
+  margin: 10px 0;
+}
 
-@media (max-width: 768px) {
-  .content-fragment-inner {
+/* =========================================================
+ * Typography
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfsubtitle {
+  font-size: 20px;
+  line-height: 30px;
+  padding: 0;
+  margin: 0 0 5px;
+  font-family: var(--heading-font-family);
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.3;
+  font-family: var(--black-font-family);
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle::after {
+  background-color: var(--main-accent-color);
+  content: "";
+  display: block;
+  height: 5px;
+  width: 128px;
+  margin: 10px auto 0;
+  transition: width .4s ease-in-out;
+}
+
+/* Description sizing / readability */
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription {
+  margin: 20px 0;
+  font-size: 16px;
+  line-height: 24px;
+  width: 60%;
+  max-width: 720px;
+}
+
+/* Ensure richtext container doesn't add extra spacing when wrapping <p> */
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription p {
+  margin: 0;
+}
+
+/* =========================================================
+ * CTA / link styles (inline CTA)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background-color: transparent;
+  color: var(--text-light);
+  text-decoration: none;
+  outline: none;
+  border: none;
+  border-radius: 0;
+  font-size: 16px;
+  font-family: var(--heading-font-family);
+  line-height: 20px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail a::after {
+  font-family: 'Font Awesome 5 Solid';
+  content: "\f105";
+  color: var(--text-light);
+  font-size: 16px;
+  font-weight: 100;
+  width: 15px;
+  height: 20px;
+  margin-left: 0;
+  padding: 1px 10px;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+/* =========================================================
+ * Image-left layout (image left, text right)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Left half shows the background image */
+.content-fragment-wrapper .content-fragment .banner-content.image-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  height: 100%;
+  background: inherit;
+  background-size: cover;
+  background-position: center left;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+/* Text panel on the right */
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail {
+  flex: 1;
+  background: var(--light-color);
+  color: var(--text-color);
+  position: relative;
+  z-index: 2;
+  margin-left: 50%;
+  padding: 60px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* =========================================================
+ * Image-right layout (image right, text left)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content.image-right {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Right half shows the background image */
+.content-fragment-wrapper .content-fragment .banner-content.image-right::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  height: 100%;
+  left: auto;
+  right: 0;
+  background: inherit;
+  background-size: cover;
+  background-position: center right;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+/* Text panel on the left */
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail {
+  flex: 1;
+  background: var(--light-color);
+  color: var(--text-color);
+  position: relative;
+  z-index: 2;
+  margin-right: 50%;
+  padding: 60px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* =========================================================
+ * Image-top layout (image top, text bottom)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content.image-top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 400px;
+  position: relative;
+  background-size: contain;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+/* Push text down to reveal image area */
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail {
+  flex: 1;
+  background: var(--light-color);
+  color: var(--text-color);
+  margin-top: 50%;
+  padding: 60px;
+  align-items: center;
+  text-align: center;
+}
+
+/* =========================================================
+ * Image-bottom layout (text top, image bottom)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 400px;
+  position: relative;
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+
+/* Push text up leaving space for bottom image */
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail {
+  flex: 1;
+  background: var(--light-color);
+  color: var(--text-color);
+  margin-bottom: 50%;
+  padding: 60px;
+  align-items: center;
+  text-align: center;
+}
+
+/* =========================================================
+ * Common styles for all image layouts
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cftitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cftitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cftitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cftitle {
+  color: var(--text-color);
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfsubtitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfsubtitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfsubtitle,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfsubtitle {
+  color: #666;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfdescription,
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfdescription,
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfdescription,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfdescription {
+  color: var(--text-color);
+  width: 100%;
+  max-width: 720px;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a,
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a,
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a {
+  color: var(--text-color);
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a::after,
+.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a::after,
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a::after,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a::after {
+  color: var(--text-color);
+}
+
+/* =========================================================
+ * Alignment modifiers (text-left / text-right / text-center)
+ * =======================================================*/
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-left {
+  text-align: left;
+  align-items: flex-start;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-center {
+  text-align: center;
+  align-items: center;
+}
+
+/* Adjust underline bar for alignment */
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-left .cftitle::after {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-right .cftitle::after {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* Alignment overrides for top/bottom layouts */
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-left .cfdescription,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-left .cfdescription {
+  text-align: left;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-left a,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-left a {
+  text-align: left;
+  align-self: flex-start;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-right .cfdescription,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-right .cfdescription {
+  text-align: right;
+}
+
+.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-right a,
+.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-right a {
+  text-align: right;
+  align-self: flex-end;
+}
+
+/* =========================================================
+ * Responsive styles (tablet & mobile)
+ * =======================================================*/
+
+/* Tablet down */
+@media (width < 1024px) {
+  .content-fragment-container .content-fragment-wrapper {
+    padding: 0;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content {
+    display: flex;
     flex-direction: column;
   }
 
-  .content-fragment-media,
-  .content-fragment-body {
-    max-width: 100%;
-    flex: 1 1 100%;
+  .content-fragment-wrapper .content-fragment .banner-content .banner-detail {
+    padding: 40px 20px;
+    width: 100%;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle {
+    font-size: 26px;
+    font-family: var(--heading-font-family);
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfsubtitle {
+    font-size: 18px;
+    font-family: var(--heading-font-family);
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription {
+    width: 90%;
+  }
+
+  /* Stack image layouts vertically */
+  .content-fragment-wrapper .content-fragment .banner-content.image-left,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right,
+  .content-fragment-wrapper .content-fragment .banner-content.image-top,
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
+    flex-direction: column;
+    background-position: center top;
+  }
+
+  /* Convert side image columns to a top image strip */
+  .content-fragment-wrapper .content-fragment .banner-content.image-left::before,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right::before {
+    width: 100%;
+    height: 260px;
+    position: relative;
+    display: block;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail {
+    margin: 0;
+    padding: 40px 20px;
+    text-align: center;
+    align-items: center;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail,
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail {
+    margin: 0;
+    padding: 40px 20px;
+    text-align: center;
+    align-items: center;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfdescription,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfdescription,
+  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfdescription,
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfdescription {
+    text-align: center;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a,
+  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a,
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a {
+    text-align: center;
+    align-self: center;
+  }
+}
+
+/* Mobile */
+@media (width < 768px) {
+  .content-fragment-wrapper .content-fragment .banner-content.image-left::before,
+  .content-fragment-wrapper .content-fragment .banner-content.image-right::before {
+    height: 200px;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content .banner-detail {
+    padding: 30px 15px;
+  }
+
+  /* Ensure top/bottom hero images are visible on mobile */
+  .content-fragment-wrapper .content-fragment .banner-content.image-top,
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    min-height: 400px !important;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-top {
+    background-position: center top !important;
+  }
+
+  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
+    background-position: center bottom !important;
   }
 }

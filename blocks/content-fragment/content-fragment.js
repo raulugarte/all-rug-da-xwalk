@@ -7,6 +7,22 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
  * - ctaStyle       (line 5, optional)
+ *
+ * Expected formats:
+ *
+ * WITH variation:
+ *   line 1: /content/dam/... (CF path)
+ *   line 2: variation (e.g. testvar, !main!, main)
+ *   line 3: style (image-left / image-right / image-top / image-bottom / default)
+ *   line 4: alignment (text-left / text-right / text-center)
+ *   line 5: cta style (cta-link / cta-button / cta-button-secondary / cta-button-dark)
+ *
+ * WITHOUT variation:
+ *   line 1: path
+ *   line 2: style
+ *   line 3: alignment
+ *   line 4: cta style
+ *   -> in this case, we SKIP the fetch, because $variation is String!
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -19,10 +35,39 @@ function getBlockConfig(block) {
   }
 
   const path = lines[0] || null;
-  const variation = lines.length > 1 ? lines[1] : null;
-  const displayStyle = lines.length > 2 ? lines[2] : '';
-  const alignment = lines.length > 3 ? lines[3] : '';
-  const ctaStyle = lines.length > 4 ? lines[4] : '';
+
+  // If we have at least 5 lines, treat line 2 as variation
+  // If we have 2 lines and the second is NOT a style token, also treat it as variation.
+  let variation = null;
+  let displayStyle = '';
+  let alignment = '';
+  let ctaStyle = '';
+
+  const styleTokens = new Set([
+    '', 'default',
+    'image-left', 'image-right', 'image-top', 'image-bottom',
+  ]);
+
+  if (lines.length >= 5) {
+    variation = lines[1];
+    displayStyle = lines[2] || '';
+    alignment = lines[3] || '';
+    ctaStyle = lines[4] || '';
+  } else if (lines.length >= 2) {
+    const maybeStyle = lines[1].toLowerCase();
+    if (!styleTokens.has(maybeStyle)) {
+      // line 2 is not a known style -> treat as variation
+      variation = lines[1];
+      displayStyle = lines[2] || '';
+      alignment = lines[3] || '';
+      ctaStyle = lines[4] || '';
+    } else {
+      // line 2 is a style, no variation line -> we will not call GraphQL
+      displayStyle = lines[1] || '';
+      alignment = lines[2] || '';
+      ctaStyle = lines[3] || '';
+    }
+  }
 
   return {
     path,
@@ -34,30 +79,40 @@ function getBlockConfig(block) {
 }
 
 /**
- * Call the persisted query with matrix params:
- * /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
+ * Call the persisted query using POST + JSON body:
+ *
+ * POST /graphql/execute.json/securbank/ArticleByPath
+ * {
+ *   "path": "...",
+ *   "variation": "..."
+ * }
  */
 async function fetchArticle(path, variation) {
-  // Build URL exactly like you do in GraphiQL
-  const url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)};variation=${encodeURIComponent(variation)}`;
+  const body = {
+    path,
+    variation,
+  };
 
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
       },
+      body: JSON.stringify(body),
       cache: 'no-store',
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
+      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
       return null;
     }
 
     const json = await resp.json();
 
     if (json.errors) {
-      console.error('content-fragment: GraphQL errors', json.errors, 'for url', url);
+      console.error('content-fragment: GraphQL errors', json.errors, 'for body', body);
       return null;
     }
 
@@ -136,7 +191,9 @@ export default async function decorate(block) {
   }
 
   if (!cfg.variation) {
-    console.warn('content-fragment: no variation (second line) found, skipping fetch');
+    console.warn(
+      'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
+    );
     return;
   }
 

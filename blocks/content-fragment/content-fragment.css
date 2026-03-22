@@ -1,471 +1,171 @@
-/* =========================================================
- * Base container
- * =======================================================*/
-
-.content-fragment-container .content-fragment-wrapper {
-  width: 100%;
-  max-width: initial;
-  margin: 0 auto;
-  display: block;
-  height: auto;
-}
-
-.content-fragment-wrapper .content-fragment {
-  width: 100%;
-}
-
-/* =========================================================
- * Base hero / banner styles (shared across layouts)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content {
-  position: relative;
-  width: 100%;
-  display: block;
-  margin: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-/* Default layout: full-bleed image with overlay handled in inline style */
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail {
+/* Base block styling */
+.block.content-fragment {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
-  width: 100%;
-  min-height: 400px;
-  background-size: cover;
-  background-position: center;
-  margin: 0;
-  padding: 60px;
-  color: var(--text-light);
-  border-radius: inherit;
+}
+
+/* Inner layout wrapper */
+.block.content-fragment .content-fragment-inner {
   display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+/* Media and body areas */
+.block.content-fragment .content-fragment-media {
+  flex: 0 0 40%;
+}
+
+.block.content-fragment .content-fragment-media img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.block.content-fragment .content-fragment-body {
+  flex: 1 1 auto;
+}
+
+/* Typography */
+.block.content-fragment .content-fragment-headline {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.block.content-fragment .content-fragment-text {
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+
+/* --- Style: image position (Style dropdown) --- */
+
+/* Default: behave like image-left */
+.block.content-fragment,
+.block.content-fragment.image-left {
+  /* nothing special: base flex-row layout */
+}
+
+.block.content-fragment.image-right .content-fragment-inner {
+  flex-direction: row-reverse;
+}
+
+.block.content-fragment.image-top .content-fragment-inner {
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+}
+
+.block.content-fragment.image-bottom .content-fragment-inner {
+  flex-direction: column-reverse;
+}
+
+/* --- Alignment (Alignment dropdown) --- */
+
+.block.content-fragment.text-left .content-fragment-body {
+  text-align: left;
+}
+
+.block.content-fragment.text-center .content-fragment-body {
   text-align: center;
 }
 
-/* Basic text spacing */
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail p {
-  margin: 10px 0;
+.block.content-fragment.text-right .content-fragment-body {
+  text-align: right;
 }
 
-/* =========================================================
- * Typography
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfsubtitle {
-  font-size: 20px;
-  line-height: 30px;
-  padding: 0;
-  margin: 0 0 5px;
-  font-family: var(--heading-font-family);
+/* When text is centered/right, also center/right CTA by default */
+.block.content-fragment.text-center .content-fragment-cta {
+  justify-content: center;
 }
 
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle {
-  margin: 0;
-  font-size: 32px;
-  line-height: 1.3;
-  font-family: var(--black-font-family);
+.block.content-fragment.text-right .content-fragment-cta {
+  justify-content: flex-end;
 }
 
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle::after {
-  background-color: var(--main-accent-color);
-  content: "";
-  display: block;
-  height: 5px;
-  width: 128px;
-  margin: 10px auto 0;
-  transition: width .4s ease-in-out;
-}
+/* --- CTA styles (CTA Style dropdown) --- */
 
-/* Description sizing / readability */
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription {
-  margin: 20px 0;
-  font-size: 16px;
-  line-height: 24px;
-  width: 60%;
-  max-width: 720px;
-}
-
-/* Ensure richtext container doesn't add extra spacing when wrapping <p> */
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription p {
-  margin: 0;
-}
-
-/* =========================================================
- * CTA / link styles (inline CTA)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail a {
+.block.content-fragment .content-fragment-cta {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0;
-  background-color: transparent;
-  color: var(--text-light);
+  gap: 0.25rem;
   text-decoration: none;
-  outline: none;
-  border: none;
-  border-radius: 0;
-  font-size: 16px;
-  font-family: var(--heading-font-family);
-  line-height: 20px;
+  cursor: pointer;
+}
+
+/* Link */
+.block.content-fragment .content-fragment-cta.cta-link {
+  color: #005ea5;
   font-weight: 500;
-  text-align: left;
-  cursor: pointer;
 }
 
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail a::after {
-  font-family: 'Font Awesome 5 Solid';
-  content: "\f105";
-  color: var(--text-light);
-  font-size: 16px;
-  font-weight: 100;
-  width: 15px;
-  height: 20px;
-  margin-left: 0;
-  padding: 1px 10px;
+.block.content-fragment .content-fragment-cta.cta-link:hover {
+  text-decoration: underline;
+}
+
+/* Primary button */
+.block.content-fragment .content-fragment-cta.cta-button {
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: #005ea5;
+  color: #fff;
+  font-weight: 600;
   border: none;
-  border-radius: 0;
-  cursor: pointer;
 }
 
-/* =========================================================
- * Image-left layout (image left, text right)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  min-height: 400px;
-  position: relative;
+.block.content-fragment .content-fragment-cta.cta-button:hover {
+  background: #00457a;
 }
 
-/* Left half shows the background image */
-.content-fragment-wrapper .content-fragment .banner-content.image-left::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 50%;
-  height: 100%;
-  background: inherit;
-  background-size: cover;
-  background-position: center left;
-  background-repeat: no-repeat;
-  z-index: 1;
+/* Secondary button */
+.block.content-fragment .content-fragment-cta.cta-button-secondary {
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: transparent;
+  color: #005ea5;
+  font-weight: 600;
+  border: 1px solid #005ea5;
 }
 
-/* Text panel on the right */
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail {
-  flex: 1;
-  background: var(--light-color);
-  color: var(--text-color);
-  position: relative;
-  z-index: 2;
-  margin-left: 50%;
-  padding: 60px;
-  align-items: flex-start;
-  text-align: left;
+.block.content-fragment .content-fragment-cta.cta-button-secondary:hover {
+  background: rgba(0, 94, 165, 0.06);
 }
 
-/* =========================================================
- * Image-right layout (image right, text left)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content.image-right {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  min-height: 400px;
-  position: relative;
+/* Dark button */
+.block.content-fragment .content-fragment-cta.cta-button-dark {
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+  border: none;
 }
 
-/* Right half shows the background image */
-.content-fragment-wrapper .content-fragment .banner-content.image-right::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 50%;
-  height: 100%;
-  left: auto;
-  right: 0;
-  background: inherit;
-  background-size: cover;
-  background-position: center right;
-  background-repeat: no-repeat;
-  z-index: 1;
+.block.content-fragment .content-fragment-cta.cta-button-dark:hover {
+  background: #020617;
 }
 
-/* Text panel on the left */
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail {
-  flex: 1;
-  background: var(--light-color);
-  color: var(--text-color);
-  position: relative;
-  z-index: 2;
-  margin-right: 50%;
-  padding: 60px;
-  align-items: flex-start;
-  text-align: left;
-}
+/* --- Responsive behaviour --- */
 
-/* =========================================================
- * Image-top layout (image top, text bottom)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content.image-top {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  min-height: 400px;
-  position: relative;
-  background-size: contain;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-/* Push text down to reveal image area */
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail {
-  flex: 1;
-  background: var(--light-color);
-  color: var(--text-color);
-  margin-top: 50%;
-  padding: 60px;
-  align-items: center;
-  text-align: center;
-}
-
-/* =========================================================
- * Image-bottom layout (text top, image bottom)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  min-height: 400px;
-  position: relative;
-  background-size: contain;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-}
-
-/* Push text up leaving space for bottom image */
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail {
-  flex: 1;
-  background: var(--light-color);
-  color: var(--text-color);
-  margin-bottom: 50%;
-  padding: 60px;
-  align-items: center;
-  text-align: center;
-}
-
-/* =========================================================
- * Common styles for all image layouts
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cftitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cftitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cftitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cftitle {
-  color: var(--text-color);
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfsubtitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfsubtitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfsubtitle,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfsubtitle {
-  color: #666;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfdescription,
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfdescription,
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfdescription,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfdescription {
-  color: var(--text-color);
-  width: 100%;
-  max-width: 720px;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a,
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a,
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a {
-  color: var(--text-color);
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a::after,
-.content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a::after,
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a::after,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a::after {
-  color: var(--text-color);
-}
-
-/* =========================================================
- * Alignment modifiers (text-left / text-right / text-center)
- * =======================================================*/
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-left {
-  text-align: left;
-  align-items: flex-start;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-right {
-  text-align: right;
-  align-items: flex-end;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-center {
-  text-align: center;
-  align-items: center;
-}
-
-/* Adjust underline bar for alignment */
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-left .cftitle::after {
-  margin-left: 0;
-  margin-right: auto;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content .banner-detail.text-right .cftitle::after {
-  margin-right: 0;
-  margin-left: auto;
-}
-
-/* Alignment overrides for top/bottom layouts */
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-left .cfdescription,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-left .cfdescription {
-  text-align: left;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-left a,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-left a {
-  text-align: left;
-  align-self: flex-start;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-right .cfdescription,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-right .cfdescription {
-  text-align: right;
-}
-
-.content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail.text-right a,
-.content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail.text-right a {
-  text-align: right;
-  align-self: flex-end;
-}
-
-/* =========================================================
- * Responsive styles (tablet & mobile)
- * =======================================================*/
-
-/* Tablet down */
-@media (width < 1024px) {
-  .content-fragment-container .content-fragment-wrapper {
-    padding: 0;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content {
-    display: flex;
+@media (max-width: 768px) {
+  .block.content-fragment .content-fragment-inner {
     flex-direction: column;
   }
 
-  .content-fragment-wrapper .content-fragment .banner-content .banner-detail {
-    padding: 40px 20px;
-    width: 100%;
+  .block.content-fragment .content-fragment-media {
+    flex: 0 0 auto;
   }
 
-  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cftitle {
-    font-size: 26px;
-    font-family: var(--heading-font-family);
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfsubtitle {
-    font-size: 18px;
-    font-family: var(--heading-font-family);
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content .banner-detail .cfdescription {
-    width: 90%;
-  }
-
-  /* Stack image layouts vertically */
-  .content-fragment-wrapper .content-fragment .banner-content.image-left,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right,
-  .content-fragment-wrapper .content-fragment .banner-content.image-top,
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
+  /* On mobile, ignore left/right layout styles and just stack */
+  .block.content-fragment.image-left .content-fragment-inner,
+  .block.content-fragment.image-right .content-fragment-inner {
     flex-direction: column;
-    background-position: center top;
   }
 
-  /* Convert side image columns to a top image strip */
-  .content-fragment-wrapper .content-fragment .banner-content.image-left::before,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right::before {
-    width: 100%;
-    height: 260px;
-    position: relative;
-    display: block;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail {
-    margin: 0;
-    padding: 40px 20px;
-    text-align: center;
-    align-items: center;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail,
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail {
-    margin: 0;
-    padding: 40px 20px;
-    text-align: center;
-    align-items: center;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail .cfdescription,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail .cfdescription,
-  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail .cfdescription,
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail .cfdescription {
-    text-align: center;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-left .banner-detail a,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right .banner-detail a,
-  .content-fragment-wrapper .content-fragment .banner-content.image-top .banner-detail a,
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom .banner-detail a {
-    text-align: center;
-    align-self: center;
-  }
-}
-
-/* Mobile */
-@media (width < 768px) {
-  .content-fragment-wrapper .content-fragment .banner-content.image-left::before,
-  .content-fragment-wrapper .content-fragment .banner-content.image-right::before {
-    height: 200px;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content .banner-detail {
-    padding: 30px 15px;
-  }
-
-  /* Ensure top/bottom hero images are visible on mobile */
-  .content-fragment-wrapper .content-fragment .banner-content.image-top,
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    min-height: 400px !important;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-top {
-    background-position: center top !important;
-  }
-
-  .content-fragment-wrapper .content-fragment .banner-content.image-bottom {
-    background-position: center bottom !important;
+  .block.content-fragment .content-fragment-body {
+    text-align: left; /* or keep alignment if you prefer */
   }
 }

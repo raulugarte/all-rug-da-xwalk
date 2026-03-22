@@ -1,188 +1,120 @@
+// GraphQL endpoint you provided
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
-const ARTICLE_BY_PATH_QUERY = `
-  query ArticleByPath($path: String!, $variation: String!) {
-    articleByPath(_path: $path, variation: $variation) {
-      item {
-        headline
-        heroImage {
-          ... on ImageRef {
-            _path
-            _authorUrl
-            _publishUrl
-            _dynamicUrl
-          }
-        }
-        _variations
-        _metadata {
-          stringMetadata {
-            name
-            value
-          }
+// If ArticleByPath is NOT a persisted query, keep this query string.
+// If it IS persisted, you can change buildGraphQLBody accordingly (see comment below).
+const ARTICLE_BY_PATH_QUERY = `query ArticleByPath($path: String!, $variation: String!) {
+  articleByPath(_path: $path, variation: $variation) {
+    item {
+      headline
+      heroImage {
+        ... on ImageRef {
+          _path
+          _authorUrl
+          _publishUrl
+          _dynamicUrl
         }
       }
-      _references {
-        __typename
+      _variations
+      _metadata {
+        stringMetadata {
+          name
+          value
+        }
       }
     }
+    _references {
+      __typename
+    }
   }
-`;
+}`;
 
 /**
- * Fetch article by content fragment path + variation.
- * Expects the block to have:
- *  - data-reference="/content/dam/...."
- *  - data-content-fragment-variation="master" (or other)
+ * Build body for non-persisted query endpoint. If ArticleByPath is a persisted query,
+ * you can change this to:
+ *
+ *   return { variables: { path, variation } };
+ *
+ * and keep GRAPHQL_ENDPOINT as-is.
  */
-async function fetchArticle(block) {
-  const reference = (block.dataset.reference || '').trim();
-  const variation =
-    (block.dataset.contentFragmentVariation || '').trim() || 'master';
+function buildGraphQLBody(path, variation) {
+  return {
+    query: ARTICLE_BY_PATH_QUERY,
+    variables: { path, variation },
+  };
+}
 
-  // Gracefully do nothing when no reference is set (e.g. author has not picked a CF yet)
-  if (!reference) {
-    console.debug(
-      'content-fragment: no content fragment reference on block; skipping fetch',
-      block,
-    );
+async function fetchArticle(path, variation) {
+  if (!path) {
+    // Don't throw – just no-op if author hasn't selected a CF yet
+    console.warn('contentfragment: no reference set, skipping fetch');
     return null;
   }
 
-  const body = JSON.stringify({
-    query: ARTICLE_BY_PATH_QUERY,
-    variables: {
-      path: reference,
-      variation,
-    },
+  const body = buildGraphQLBody(path, variation || 'master');
+
+  const resp = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
 
-  let response;
-  try {
-    response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body,
-    });
-  } catch (e) {
-    console.error('content-fragment: network error while fetching article', e);
+  if (!resp.ok) {
+    // Surface enough info to debug without breaking the page
+    const text = await resp.text().catch(() => '');
+    console.error('contentfragment: GraphQL error', resp.status, text);
     return null;
   }
 
-  if (!response.ok) {
-    console.error(
-      `content-fragment: GraphQL HTTP error ${response.status} ${response.statusText}`,
-    );
-    return null;
-  }
-
-  let json;
-  try {
-    json = await response.json();
-  } catch (e) {
-    console.error('content-fragment: failed to parse GraphQL JSON', e);
-    return null;
-  }
-
-  if (json.errors && json.errors.length) {
-    console.error('content-fragment: GraphQL errors', json.errors);
-    return null;
-  }
-
-  const articleByPath = json.data && json.data.articleByPath;
-  const item = articleByPath && articleByPath.item;
-
-  if (!item) {
-    console.debug(
-      'content-fragment: no article item returned for',
-      reference,
-      variation,
-    );
-    return null;
-  }
-
-  return item;
+  const json = await resp.json().catch(() => null);
+  return json?.data?.articleByPath?.item || null;
 }
 
-/**
- * Build DOM for the article content fragment.
- */
-function renderArticle(block, article) {
-  const { headline, heroImage } = article;
+function render(block, article, options) {
+  block.innerHTML = '';
 
-  const displayStyle = block.dataset.displaystyle || '';
-  const alignment = block.dataset.alignment || '';
-  const ctaStyle = block.dataset.ctastyle || '';
-
-  // Apply style classes from UE configuration
-  if (displayStyle) block.classList.add(displayStyle);
-  if (alignment) block.classList.add(alignment);
-  if (ctaStyle) block.classList.add(ctaStyle);
-
-  // Clear original content
-  block.textContent = '';
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'content-fragment-inner';
-
-  // Resolve hero image as object or array
-  let hero = heroImage;
-  if (Array.isArray(heroImage)) {
-    hero = heroImage[0] || null;
-  }
-
-  // Image
-  if (hero) {
-    const imageUrl = hero._dynamicUrl || hero._publishUrl || null;
-    if (imageUrl) {
-      const figure = document.createElement('figure');
-      figure.className = 'content-fragment-hero';
-
-      const img = document.createElement('img');
-      img.src = imageUrl;
-      img.alt = headline || '';
-
-      figure.appendChild(img);
-      wrapper.appendChild(figure);
-    }
-  }
-
-  // Text
-  const text = document.createElement('div');
-  text.className = 'content-fragment-text';
-
-  if (headline) {
-    const h2 = document.createElement('h2');
-    h2.className = 'content-fragment-headline';
-    h2.textContent = headline;
-    text.appendChild(h2);
-  }
-
-  wrapper.appendChild(text);
-  block.appendChild(wrapper);
-}
-
-/**
- * Default decorate entry point.
- * @param {HTMLElement} block
- */
-export default async function decorate(block) {
-  // Expect Universal Editor to emit something like:
-  // <div class="content-fragment"
-  //      data-reference="/content/dam/...."
-  //      data-content-fragment-variation="master"
-  //      data-displaystyle="image-left"
-  //      data-alignment="text-left"
-  //      data-ctastyle="cta-button">
-  // </div>
-
-  const article = await fetchArticle(block);
   if (!article) {
-    // nothing to render (no reference, no data, or error)
+    block.classList.add('contentfragment-empty');
     return;
   }
 
-  renderArticle(block, article);
+  const { headline, heroImage } = article;
+
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('contentfragment-inner');
+
+  if (headline) {
+    const h2 = document.createElement('h2');
+    h2.textContent = headline;
+    wrapper.appendChild(h2);
+  }
+
+  if (heroImage && (heroImage._dynamicUrl || heroImage._publishUrl)) {
+    const img = document.createElement('img');
+    img.src = heroImage._dynamicUrl || heroImage._publishUrl;
+    img.alt = headline || '';
+    wrapper.appendChild(img);
+  }
+
+  block.appendChild(wrapper);
+
+  // Apply authorable style classes
+  if (options.displayStyle) block.classList.add(options.displayStyle);
+  if (options.alignment) block.classList.add(options.alignment);
+  if (options.ctaStyle) block.classList.add(options.ctaStyle);
+}
+
+export default async function decorate(block) {
+  // These match the data-* attributes from the template.html above
+  const path = block.dataset.reference;
+  const variation = block.dataset.contentFragmentVariation || 'master';
+
+  const options = {
+    displayStyle: block.dataset.displaystyle || '',
+    alignment: block.dataset.alignment || '',
+    ctaStyle: block.dataset.ctastyle || '',
+  };
+
+  const article = await fetchArticle(path, variation);
+  render(block, article, options);
 }

@@ -6,7 +6,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * - variation      (line 2, required for GraphQL)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
- * - ctaStyle       (line 5, optional – currently not used)
+ * - ctaStyle       (line 5, optional – not used yet)
  *
  * Expected format:
  *
@@ -14,7 +14,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * testvar                             ← line 2: variation
  * image-left                          ← line 3: style
  * text-left                           ← line 4: alignment
- * cta-link                            ← line 5: CTA style (ignored in JS for now)
+ * cta-link                            ← line 5: CTA style
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -42,31 +42,74 @@ function getBlockConfig(block) {
 }
 
 /**
- * Call the persisted query using GET + matrix params:
+ * Fetch CSRF token on author (needed for POST).
+ * On publish or if token endpoint is unavailable, we just return null.
+ */
+async function getCsrfToken() {
+  try {
+    const resp = await fetch('/libs/granite/csrf/token.json', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!resp.ok) {
+      return null;
+    }
+    const data = await resp.json();
+    return data.token || null;
+  } catch (e) {
+    // Not fatal; we may be on publish or a non-AEM domain
+    return null;
+  }
+}
+
+/**
+ * Call the persisted query using POST + JSON body:
  *
- * /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
+ * POST /graphql/execute.json/securbank/ArticleByPath
+ * {
+ *   "variables": {
+ *     "path": "...",
+ *     "variation": "..."
+ *   }
+ * }
  */
 async function fetchArticle(path, variation) {
-  const url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)};variation=${encodeURIComponent(variation)}`;
+  const body = {
+    variables: {
+      path,
+      variation,
+    },
+  };
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+
+  // Try to get CSRF token (needed on author)
+  const token = await getCsrfToken();
+  if (token) {
+    headers['CSRF-Token'] = token;
+  }
 
   try {
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
+    const resp = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      credentials: 'same-origin',
       cache: 'no-store',
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
+      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
       return null;
     }
 
     const json = await resp.json();
 
     if (json.errors) {
-      console.error('content-fragment: GraphQL errors', json.errors, 'for url', url);
+      console.error('content-fragment: GraphQL errors', json.errors, 'for body', body);
       return null;
     }
 
@@ -145,7 +188,9 @@ export default async function decorate(block) {
   }
 
   if (!cfg.variation) {
-    console.warn('content-fragment: no variation (second line) found, skipping fetch');
+    console.warn(
+      'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
+    );
     return;
   }
 

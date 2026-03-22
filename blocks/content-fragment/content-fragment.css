@@ -8,6 +8,7 @@
   border-radius: 4px;
 }
 
+/* Inner layout: media + body */
 .content-fragment-inner {
   display: flex;
   flex-wrap: wrap;
@@ -15,7 +16,6 @@
   align-items: flex-start;
 }
 
-/* Media and body wrappers */
 .content-fragment-media {
   flex: 0 0 40%;
   max-width: 40%;

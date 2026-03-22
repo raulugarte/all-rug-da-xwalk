@@ -2,26 +2,11 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
  * Parse the block text into:
- * - path
- * - variation (optional)
- * - displayStyle (image-left/right/top/bottom or default)
- * - alignment (text-left/right/center)
- * - ctaStyle (cta-link/cta-button/...)
- *
- * Supported formats (from your screenshots):
- *
- * 1) Without explicit variation:
- *    line 1: path
- *    line 2: style (image-left / image-right / image-top / image-bottom / default)
- *    line 3: alignment (text-left / text-right / text-center)
- *    line 4: cta style (cta-link / cta-button / cta-button-secondary / cta-button-dark)
- *
- * 2) With variation:
- *    line 1: path
- *    line 2: variation (e.g. testvar)
- *    line 3: style
- *    line 4: alignment
- *    line 5: cta style
+ * - path           (line 1)
+ * - variation      (line 2, required for GraphQL)
+ * - displayStyle   (line 3, optional)
+ * - alignment      (line 4, optional)
+ * - ctaStyle       (line 5, optional)
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -33,48 +18,11 @@ function getBlockConfig(block) {
     return {};
   }
 
-  const path = lines[0];
-
-  // Known style tokens
-  const styleTokens = new Set([
-    '', 'default',
-    'image-left', 'image-right', 'image-top', 'image-bottom',
-  ]);
-
-  let variation = null;
-  let displayStyle = null;
-  let alignment = null;
-  let ctaStyle = null;
-
-  let idx = 1;
-
-  // Decide if line 2 is variation or style
-  if (lines[idx]) {
-    const l2 = lines[idx].toLowerCase();
-    if (!styleTokens.has(l2)) {
-      // Not a known style => treat as variation
-      variation = lines[idx];
-      idx += 1;
-    }
-  }
-
-  // Style (if present)
-  if (lines[idx]) {
-    displayStyle = lines[idx];
-    idx += 1;
-  }
-
-  // Alignment (if present)
-  if (lines[idx]) {
-    alignment = lines[idx];
-    idx += 1;
-  }
-
-  // CTA style (if present)
-  if (lines[idx]) {
-    ctaStyle = lines[idx];
-    idx += 1;
-  }
+  const path = lines[0] || null;
+  const variation = lines.length > 1 ? lines[1] : null;
+  const displayStyle = lines.length > 2 ? lines[2] : '';
+  const alignment = lines.length > 3 ? lines[3] : '';
+  const ctaStyle = lines.length > 4 ? lines[4] : '';
 
   return {
     path,
@@ -88,67 +36,42 @@ function getBlockConfig(block) {
 /**
  * Call the persisted query with matrix params:
  * /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
- *
- * If no variation is provided, try a set of common defaults:
- *   !main!, main, (no variation param), master
  */
-async function fetchArticle(path, initialVariation) {
-  const variationsToTry = [];
+async function fetchArticle(path, variation) {
+  // Build URL exactly like you do in GraphiQL
+  const url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)};variation=${encodeURIComponent(variation)}`;
 
-  if (initialVariation) {
-    variationsToTry.push(initialVariation);
-  }
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
 
-  // Common defaults – deduped later
-  variationsToTry.push('!main!', 'main', '', 'master');
-
-  const tried = new Set();
-  for (const v of variationsToTry) {
-    if (tried.has(v)) continue;
-    tried.add(v);
-
-    let url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)}`;
-    if (v) {
-      url += `;variation=${encodeURIComponent(v)}`;
+    if (!resp.ok) {
+      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
+      return null;
     }
 
-    try {
-      const resp = await fetch(url, {
-        headers: {
-          Accept: 'application/json',
-        },
-        cache: 'no-store',
-      });
+    const json = await resp.json();
 
-      if (!resp.ok) {
-        console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
-        continue;
-      }
-
-      const json = await resp.json();
-
-      if (json.errors) {
-        console.error('content-fragment: GraphQL errors', json.errors, 'for variation', v || '(none)');
-      }
-
-      const item = json?.data?.articleByPath?.item;
-      if (item) {
-        console.debug(
-          `content-fragment: loaded article for ${path} with variation '${v || '(none)'}'`,
-        );
-        return { item, variationUsed: v };
-      }
-    } catch (e) {
-      console.error('content-fragment: fetch failed for variation', v || '(none)', e);
+    if (json.errors) {
+      console.error('content-fragment: GraphQL errors', json.errors, 'for url', url);
+      return null;
     }
-  }
 
-  console.warn(
-    `content-fragment: no article returned for ${path} after trying variations: ${Array.from(tried)
-      .map((v) => (v === '' ? '(none)' : v))
-      .join(', ')}`,
-  );
-  return null;
+    const item = json?.data?.articleByPath?.item;
+    if (!item) {
+      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
+      return null;
+    }
+
+    return item;
+  } catch (e) {
+    console.error('content-fragment: fetch failed', e);
+    return null;
+  }
 }
 
 /**
@@ -157,13 +80,13 @@ async function fetchArticle(path, initialVariation) {
 function renderArticle(block, article, cfg) {
   const { displayStyle, alignment } = cfg;
 
-  // Clear original config lines
+  // Clear original text lines
   block.innerHTML = '';
 
-  // Ensure base class for CSS
+  // Base class for CSS
   block.classList.add('content-fragment');
 
-  // Apply style + alignment classes from config
+  // Apply style + alignment classes coming from UE
   if (displayStyle) {
     block.classList.add(displayStyle);
   }
@@ -212,10 +135,15 @@ export default async function decorate(block) {
     return;
   }
 
-  const result = await fetchArticle(cfg.path, cfg.variation);
-  if (!result) {
+  if (!cfg.variation) {
+    console.warn('content-fragment: no variation (second line) found, skipping fetch');
     return;
   }
 
-  renderArticle(block, result.item, cfg);
+  const article = await fetchArticle(cfg.path, cfg.variation);
+  if (!article) {
+    return;
+  }
+
+  renderArticle(block, article, cfg);
 }

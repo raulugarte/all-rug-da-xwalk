@@ -1,184 +1,194 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Extract configuration from the block.
+ * Extract config for this block from data-* attributes and/or text lines.
+ * Priority:
+ * - data-reference, data-content-fragment-variation, data-displaystyle, data-alignment, data-ctastyle
+ * - fallback: parse text lines inside the block
  *
- * Supports two patterns:
- * 1) Preferred: data attributes on the block element:
- *    - data-reference
- *    - data-content-fragment-variation
- *    - data-displaystyle
- *    - data-alignment
- *    - data-ctastyle
- *
- * 2) Current (fallback): plain text lines inside the block:
- *    line 1: path
- *    line 2: variation (optional)
- *    line 3: displaystyle (optional)
- *    line 4: alignment (optional)
- *    line 5: ctastyle (optional)
- *
- * @param {HTMLElement} block
- * @returns {{ path: string, variation: string, displaystyle: string, alignment: string, ctaStyle: string }}
+ * Text line parsing (if no data-*):
+ *   line 1 = path
+ *   remaining lines: try to map to style, alignment, ctaStyle, variation (in that order)
  */
 function getBlockConfig(block) {
-  // 1. Try data-* attributes first (future-proof)
-  const path = block.dataset.reference || '';
-  const variation = block.dataset.contentFragmentVariation || '';
-  const displaystyle = block.dataset.displaystyle || '';
-  const alignment = block.dataset.alignment || '';
-  const ctaStyle = block.dataset.ctastyle || '';
+  const ds = block.dataset;
 
-  if (path) {
-    return { path, variation, displaystyle, alignment, ctaStyle };
+  let path = ds.reference && ds.reference.trim();
+  let variation = ds.contentFragmentVariation && ds.contentFragmentVariation.trim();
+  let displayStyle = ds.displaystyle && ds.displaystyle.trim();
+  let alignment = ds.alignment && ds.alignment.trim();
+  let ctaStyle = ds.ctastyle && ds.ctastyle.trim();
+
+  // If reference not set via data-*, fall back to text lines
+  if (!path) {
+    const lines = block.textContent
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (lines.length > 0) {
+      path = lines[0];
+
+      const styleTokens = new Set([
+        '', 'default', 'image-left', 'image-right', 'image-top', 'image-bottom',
+        'image left', 'image right', 'image top', 'image bottom',
+      ]);
+      const alignTokens = new Set([
+        'text-left', 'text-right', 'text-center',
+        'left', 'right', 'center',
+      ]);
+      const ctaTokens = new Set([
+        'cta-link', 'cta-button', 'cta-button-secondary', 'cta-button-dark',
+        'link', 'primary button', 'secondary button', 'dark button',
+      ]);
+
+      // Go through remaining lines and classify them
+      lines.slice(1).forEach((line) => {
+        const lower = line.toLowerCase();
+
+        if (!displayStyle && styleTokens.has(lower)) {
+          displayStyle = line;
+          return;
+        }
+
+        if (!alignment && alignTokens.has(lower)) {
+          alignment = line;
+          return;
+        }
+
+        if (!ctaStyle && ctaTokens.has(lower)) {
+          ctaStyle = line;
+          return;
+        }
+
+        // If it's none of the above and we don't have a variation yet,
+        // treat this as the variation.
+        if (!variation) {
+          variation = line;
+        }
+      });
+    }
   }
 
-  // 2. Fallback: parse text content by lines (matches your current setup)
-  const lines = (block.textContent || '')
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
   return {
-    path: lines[0] || '',
-    variation: lines[1] || '',
-    displaystyle: lines[2] || '',
-    alignment: lines[3] || '',
-    ctaStyle: lines[4] || '',
+    path,
+    variation,
+    displayStyle,
+    alignment,
+    ctaStyle,
   };
 }
 
 /**
- * Build the persisted query URL using matrix params, e.g.:
- * /graphql/execute.json/securbank/ArticleByPath;path=/content/...;variation=testvar
- *
- * @param {string} path
- * @param {string} variation
- * @returns {string}
- */
-function buildGraphqlUrl(path, variation) {
-  let url = `${GRAPHQL_ENDPOINT};path=${path}`;
-  if (variation) {
-    url += `;variation=${variation}`;
-  }
-  return url;
-}
-
-/**
- * Fetch article data for a given path + variation.
- *
- * @param {string} path
- * @param {string} variation
- * @returns {Promise<import('./types').ArticleData|null>}  // informal type hint
+ * Call the persisted query.
+ * If variation is present, send it as a matrix parameter.
+ * If not, call without variation so the backend can use its default.
  */
 async function fetchArticle(path, variation) {
-  const url = buildGraphqlUrl(path, variation);
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    console.error('contentfragment: GraphQL request failed', response.status, response.statusText);
-    return null;
-  }
-
-  let data;
   try {
-    data = await response.json();
+    let url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)}`;
+    if (variation) {
+      url += `;variation=${encodeURIComponent(variation)}`;
+    }
+
+    const resp = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!resp.ok) {
+      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
+      return null;
+    }
+
+    const json = await resp.json();
+
+    if (json.errors) {
+      console.error('content-fragment: GraphQL errors', json.errors);
+    }
+
+    const item = json?.data?.articleByPath?.item;
+    if (!item) {
+      console.warn(
+        `content-fragment: no article returned for ${path}${
+          variation ? ` (variation: ${variation})` : ''
+        }`,
+      );
+      return null;
+    }
+
+    return item;
   } catch (e) {
-    console.error('contentfragment: failed to parse GraphQL response as JSON', e);
+    console.error('content-fragment: fetch failed', e);
     return null;
   }
-
-  if (!data || !data.data || !data.data.articleByPath || !data.data.articleByPath.item) {
-    console.warn('contentfragment: no article returned for', path, variation || '(no variation)');
-    return null;
-  }
-
-  return data.data.articleByPath.item;
 }
 
 /**
- * Render the article data into the block.
- *
- * Currently renders:
- * - headline
- * - hero image (dynamicUrl, publishUrl, or path)
- *
- * @param {HTMLElement} block
- * @param {object} article
- * @param {string} displaystyle
- * @param {string} alignment
- * @param {string} ctaStyle
+ * Renders the article into the block.
  */
-function renderArticle(block, article, displaystyle, alignment, ctaStyle) {
-  block.innerHTML = '';
+function renderArticle(block, article, cfg) {
+  const { displayStyle, alignment } = cfg;
 
-  const classes = ['content-fragment'];
-  if (displaystyle) classes.push(displaystyle);
-  if (alignment) classes.push(alignment);
-  if (ctaStyle) classes.push(ctaStyle);
-  block.classList.add(...classes);
+  // Clear original config text
+  block.innerHTML = '';
+  block.classList.add('content-fragment');
+
+  if (displayStyle) {
+    block.classList.add(displayStyle);
+  }
+
+  if (alignment) {
+    block.classList.add(alignment);
+  }
 
   const wrapper = document.createElement('div');
   wrapper.className = 'content-fragment-inner';
+
+  const media = document.createElement('div');
+  media.className = 'content-fragment-media';
+
+  const body = document.createElement('div');
+  body.className = 'content-fragment-body';
+
+  // Hero image
+  if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
+    const img = document.createElement('img');
+    img.className = 'content-fragment-image';
+    img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
+    img.alt = article.headline || '';
+    media.appendChild(img);
+  }
 
   // Headline
   if (article.headline) {
     const h2 = document.createElement('h2');
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
-    wrapper.appendChild(h2);
+    body.appendChild(h2);
   }
 
-  // Hero image
-  const hero = article.heroImage && article.heroImage[0];
-  if (hero) {
-    const imgUrl = hero._dynamicUrl || hero._publishUrl || hero._path;
-    if (imgUrl) {
-      const figure = document.createElement('figure');
-      figure.className = 'content-fragment-hero';
-
-      const img = document.createElement('img');
-      img.src = imgUrl;
-      img.alt = article.headline || '';
-      figure.appendChild(img);
-
-      wrapper.appendChild(figure);
-    }
-  }
-
-  // TODO: extend with body text, metadata, CTAs, etc., if needed.
-
+  wrapper.append(media, body);
   block.appendChild(wrapper);
 }
 
 /**
- * Main decorate entrypoint for the block.
- *
- * @param {HTMLElement} block
+ * Block entry point.
  */
 export default async function decorate(block) {
-  const { path, variation, displaystyle, alignment, ctaStyle } = getBlockConfig(block);
+  const cfg = getBlockConfig(block);
 
-  if (!path) {
-    // Nothing configured; leave block as-is
-    console.warn('contentfragment: no content fragment path found, skipping fetch');
+  if (!cfg.path) {
+    console.warn('content-fragment: no reference set, skipping fetch');
     return;
   }
 
-  try {
-    const article = await fetchArticle(path, variation);
-    if (!article) {
-      return;
-    }
-
-    renderArticle(block, article, displaystyle, alignment, ctaStyle);
-  } catch (e) {
-    console.error('contentfragment: unexpected error while loading article', e);
+  const article = await fetchArticle(cfg.path, cfg.variation);
+  if (!article) {
+    return;
   }
+
+  renderArticle(block, article, cfg);
 }

@@ -1,12 +1,5 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
-//https://author-p130407-e1279066.adobeaemcloud.com/graphql/execute.json/securbank/ArticleByPath;path=;variation=
-
-/**
- * Optional: if you use a persisted query instead of sending `query` in body,
- * change `buildGraphQLRequest` accordingly.
- */
-
 const ARTICLE_BY_PATH_QUERY = `
   query ArticleByPath($path: String!, $variation: String!) {
     articleByPath(_path: $path, variation: $variation) {
@@ -36,143 +29,160 @@ const ARTICLE_BY_PATH_QUERY = `
 `;
 
 /**
- * Build the fetch options for a non‑persisted GraphQL query.
- * If you use a persisted query, change this to just send variables.
+ * Fetch article by content fragment path + variation.
+ * Expects the block to have:
+ *  - data-reference="/content/dam/...."
+ *  - data-content-fragment-variation="master" (or other)
  */
-function buildGraphQLRequest(path, variation) {
-  return {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+async function fetchArticle(block) {
+  const reference = (block.dataset.reference || '').trim();
+  const variation =
+    (block.dataset.contentFragmentVariation || '').trim() || 'master';
+
+  // Gracefully do nothing when no reference is set (e.g. author has not picked a CF yet)
+  if (!reference) {
+    console.debug(
+      'content-fragment: no content fragment reference on block; skipping fetch',
+      block,
+    );
+    return null;
+  }
+
+  const body = JSON.stringify({
+    query: ARTICLE_BY_PATH_QUERY,
+    variables: {
+      path: reference,
+      variation,
     },
-    body: JSON.stringify({
-      query: ARTICLE_BY_PATH_QUERY,
-      variables: {
-        path,
-        variation,
+  });
+
+  let response;
+  try {
+    response = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
-    }),
-  };
-}
-
-async function fetchArticle(path, variation) {
-  if (!path) {
-    throw new Error('Missing content fragment path (reference).');
+      body,
+    });
+  } catch (e) {
+    console.error('content-fragment: network error while fetching article', e);
+    return null;
   }
 
-  // Fallback: if variation is empty, use 'master' (adjust to your model behaviour).
-  const safeVariation = (variation && variation.trim()) || 'master';
-
-  const res = await fetch(GRAPHQL_ENDPOINT, buildGraphQLRequest(path, safeVariation));
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GraphQL error (${res.status}): ${text}`);
+  if (!response.ok) {
+    console.error(
+      `content-fragment: GraphQL HTTP error ${response.status} ${response.statusText}`,
+    );
+    return null;
   }
 
-  const json = await res.json();
-  const data = json?.data?.articleByPath?.item;
-  if (!data) {
-    throw new Error('No article item returned from GraphQL for given path/variation.');
+  let json;
+  try {
+    json = await response.json();
+  } catch (e) {
+    console.error('content-fragment: failed to parse GraphQL JSON', e);
+    return null;
   }
 
-  return data;
-}
+  if (json.errors && json.errors.length) {
+    console.error('content-fragment: GraphQL errors', json.errors);
+    return null;
+  }
 
-function createHeroImage(heroImage) {
-  if (!heroImage) return null;
+  const articleByPath = json.data && json.data.articleByPath;
+  const item = articleByPath && articleByPath.item;
 
-  const url = heroImage._dynamicUrl || heroImage._publishUrl || heroImage._authorUrl || heroImage._path;
-  if (!url) return null;
+  if (!item) {
+    console.debug(
+      'content-fragment: no article item returned for',
+      reference,
+      variation,
+    );
+    return null;
+  }
 
-  const picture = document.createElement('picture');
-  const img = document.createElement('img');
-  img.src = url;
-  img.loading = 'lazy';
-  img.alt = ''; // Optionally map metadata to alt text.
-  picture.appendChild(img);
-
-  return picture;
-}
-
-function applyStyleOptions(block, { displayStyle, alignment, ctaStyle }) {
-  if (displayStyle) block.classList.add(displayStyle);
-  if (alignment) block.classList.add(alignment);
-  if (ctaStyle) block.classList.add(ctaStyle);
+  return item;
 }
 
 /**
- * Main decorate entrypoint required by Edge Delivery blocks.
+ * Build DOM for the article content fragment.
  */
-export default async function decorate(block) {
-  // Read configuration from data attributes supplied by Universal Editor.
-  const reference = block.dataset.reference || '';
-  const variation = block.dataset.contentFragmentVariation || '';
+function renderArticle(block, article) {
+  const { headline, heroImage } = article;
+
   const displayStyle = block.dataset.displaystyle || '';
   const alignment = block.dataset.alignment || '';
   const ctaStyle = block.dataset.ctastyle || '';
 
-  // Clean existing author-time placeholder content (if any).
+  // Apply style classes from UE configuration
+  if (displayStyle) block.classList.add(displayStyle);
+  if (alignment) block.classList.add(alignment);
+  if (ctaStyle) block.classList.add(ctaStyle);
+
+  // Clear original content
   block.textContent = '';
 
-  // Apply style classes from UE select fields.
-  applyStyleOptions(block, { displayStyle, alignment, ctaStyle });
+  const wrapper = document.createElement('div');
+  wrapper.className = 'content-fragment-inner';
 
-  // Basic loading state – you can style `.cf-loading` via CSS.
-  const loadingEl = document.createElement('div');
-  loadingEl.className = 'cf-loading';
-  loadingEl.textContent = 'Loading content…';
-  block.appendChild(loadingEl);
-
-  try {
-    const article = await fetchArticle(reference, variation);
-
-    // Clear loading state.
-    block.textContent = '';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'cf-inner';
-
-    // Headline
-    if (article.headline) {
-      const h2 = document.createElement('h2');
-      h2.className = 'cf-headline';
-      h2.textContent = article.headline;
-      wrapper.appendChild(h2);
-    }
-
-    // Hero image
-    const heroImageNode = createHeroImage(article.heroImage);
-    if (heroImageNode) {
-      const heroWrapper = document.createElement('div');
-      heroWrapper.className = 'cf-hero-image';
-      heroWrapper.appendChild(heroImageNode);
-      wrapper.appendChild(heroWrapper);
-    }
-
-    // Example: expose variations & metadata as data attributes for debugging / CSS hooks.
-    if (Array.isArray(article._variations)) {
-      wrapper.dataset.variations = article._variations.join(',');
-    }
-
-    if (article._metadata?.stringMetadata) {
-      article._metadata.stringMetadata.forEach(({ name, value }) => {
-        if (!name || typeof value === 'undefined') return;
-        const safeName = name.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-        wrapper.dataset[`meta-${safeName}`] = String(value);
-      });
-    }
-
-    block.appendChild(wrapper);
-  } catch (e) {
-    // Basic error display – adjust for your UX.
-    block.textContent = '';
-    const errorEl = document.createElement('div');
-    errorEl.className = 'cf-error';
-    errorEl.textContent = `Failed to load content fragment: ${e.message}`;
-    block.appendChild(errorEl);
-    // Optionally: console.error for debugging
-    // eslint-disable-next-line no-console
-    console.error(e);
+  // Resolve hero image as object or array
+  let hero = heroImage;
+  if (Array.isArray(heroImage)) {
+    hero = heroImage[0] || null;
   }
+
+  // Image
+  if (hero) {
+    const imageUrl = hero._dynamicUrl || hero._publishUrl || null;
+    if (imageUrl) {
+      const figure = document.createElement('figure');
+      figure.className = 'content-fragment-hero';
+
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = headline || '';
+
+      figure.appendChild(img);
+      wrapper.appendChild(figure);
+    }
+  }
+
+  // Text
+  const text = document.createElement('div');
+  text.className = 'content-fragment-text';
+
+  if (headline) {
+    const h2 = document.createElement('h2');
+    h2.className = 'content-fragment-headline';
+    h2.textContent = headline;
+    text.appendChild(h2);
+  }
+
+  wrapper.appendChild(text);
+  block.appendChild(wrapper);
+}
+
+/**
+ * Default decorate entry point.
+ * @param {HTMLElement} block
+ */
+export default async function decorate(block) {
+  // Expect Universal Editor to emit something like:
+  // <div class="content-fragment"
+  //      data-reference="/content/dam/...."
+  //      data-content-fragment-variation="master"
+  //      data-displaystyle="image-left"
+  //      data-alignment="text-left"
+  //      data-ctastyle="cta-button">
+  // </div>
+
+  const article = await fetchArticle(block);
+  if (!article) {
+    // nothing to render (no reference, no data, or error)
+    return;
+  }
+
+  renderArticle(block, article);
 }

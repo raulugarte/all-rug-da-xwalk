@@ -1,5 +1,5 @@
 import { getMetadata, readBlockConfig } from '../../scripts/aem.js';
-import { isAuthorEnvironment, moveInstrumentation } from '../../scripts/scripts.js';
+//import { isAuthorEnvironment, moveInstrumentation } from '../../scripts/scripts.js';
 import { getHostname, mapAemPathToSitePath } from '../../scripts/utils.js';
 
 /**

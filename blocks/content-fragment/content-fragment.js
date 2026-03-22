@@ -1,47 +1,35 @@
-/**
- * content-fragment.js
- *
- * Renders an article content fragment selected via the block model:
- * - reference: CF path
- * - contentFragmentVariation: variation name (default: "main")
- * - displaystyle, alignment, ctastyle: visual options
- *
- * Uses persisted GraphQL query:
- *   query ArticleByPath($path: String!, $variation: String!) { ... }
- * exposed at:
- *   /graphql/execute.json/securbank/ArticleByPath
- */
-
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Read configuration from the block element.
+ * Read configuration for this block from data-* attributes.
  *
- * Expected attributes on the block root:
- *   data-reference="/content/dam/.../my-article"
- *   data-content-fragment-variation="main"
- *   data-displaystyle="image-left|image-right|image-top|image-bottom"
- *   data-alignment="text-left|text-right|text-center"
- *   data-ctastyle="cta-link|cta-button|cta-button-secondary|cta-button-dark"
+ * Expected on the block root:
+ *   data-reference                        → CF path (required)
+ *   data-content-fragment-variation       → variation (optional, defaults to "main")
+ *   data-displaystyle                     → style class (optional)
+ *   data-alignment                        → style class (optional)
+ *   data-ctastyle                         → style class (optional)
  */
 function getFragmentConfigFromBlock(block) {
+  // Try a few reasonable attribute names for the CF path
   const path =
     block.dataset.reference?.trim() ||
+    block.dataset.cfPath?.trim() ||
+    block.dataset.contentFragmentPath?.trim() ||
     '';
 
-  // default variation is "main" as requested
-  const variationRaw =
+  // Default variation is "main" if nothing is configured
+  const variation =
     block.dataset.contentFragmentVariation?.trim() ||
-    '';
-  const variation = variationRaw || 'main';
+    block.dataset.variation?.trim() ||
+    'main';
 
   const displayStyle = block.dataset.displaystyle?.trim() || '';
   const alignment = block.dataset.alignment?.trim() || '';
   const ctaStyle = block.dataset.ctastyle?.trim() || '';
 
   if (!path) {
-    // Soft-fail: log and let the block render nothing instead of crashing.
-    // eslint-disable-next-line no-console
+    // If you see this in the console, make sure your block root has data-reference set.
     console.warn('content-fragment: missing CF path; set data-reference on the block.');
     return null;
   }
@@ -56,146 +44,164 @@ function getFragmentConfigFromBlock(block) {
 }
 
 /**
- * Build the persisted query URL with path & variation parameters.
- */
-function buildArticleByPathUrl(path, variation) {
-  const url = new URL(GRAPHQL_ENDPOINT, window.location.origin);
-  url.searchParams.set('path', path);
-  url.searchParams.set('variation', variation || 'main');
-  return url.toString();
-}
-
-/**
- * Fetch a single article via the ArticleByPath persisted query.
- *
- * Expected response shape:
+ * Call the persisted query ArticleByPath on AEM.
+ * Expects response shape:
  * {
- *   "data": {
- *     "articleByPath": {
- *       "item": {
- *         "headline": "...",
- *         "heroImage": {
- *           "_path": "...",
- *           "_authorUrl": "...",
- *           "_publishUrl": "...",
- *           "_dynamicUrl": "..."
- *         },
- *         "_variations": [...],
- *         "_metadata": { ... }
+ *   data: {
+ *     articleByPath: {
+ *       item: {
+ *         headline,
+ *         heroImage { _path, _authorUrl, _publishUrl, _dynamicUrl },
+ *         _variations,
+ *         _metadata { stringMetadata[] }
  *       },
- *       "_references": [...]
+ *       _references { ... }
  *     }
  *   }
  * }
  */
-async function fetchArticle(path, variation) {
-  const url = buildArticleByPathUrl(path, variation);
-  const res = await fetch(url, { method: 'GET' });
+async function fetchArticle(config) {
+  const { path, variation } = config;
+
+  const params = new URLSearchParams({
+    path,
+    variation,
+  });
+
+  const url = `${GRAPHQL_ENDPOINT}?${params.toString()}`;
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include', // safe on author; ignored on anonymous publish
+  });
 
   if (!res.ok) {
-    throw new Error(`GraphQL request failed: ${res.status}`);
+    throw new Error(`GraphQL request failed: ${res.status} ${res.statusText}`);
   }
 
   const json = await res.json();
-  const article =
-    json?.data?.articleByPath?.item || null;
 
-  return article;
-}
+  const articleByPath = json?.data?.articleByPath;
+  const item = articleByPath?.item;
 
-/**
- * Helper to create an element with optional classes.
- */
-function createElement(tag, classNames = []) {
-  const el = document.createElement(tag);
-  if (Array.isArray(classNames) && classNames.length) {
-    el.classList.add(...classNames.filter(Boolean));
-  } else if (typeof classNames === 'string' && classNames) {
-    el.classList.add(classNames);
+  if (!item) {
+    console.warn('content-fragment: no item returned for path/variation', { path, variation, json });
+    return null;
   }
-  return el;
+
+  return item;
 }
 
 /**
- * Render the article CF into the block.
- * Uses minimal fields: headline + heroImage.
- * Extend here if you add e.g. main { plaintext } back to the query.
+ * Render a single article content fragment into the block.
  */
-function renderArticle(block, config, article) {
-  block.textContent = '';
+function renderArticle(block, article, config) {
+  const { displayStyle, alignment, ctaStyle } = config;
 
-  // Root wrapper with UE instrumentation to open the CF
-  const wrapper = createElement('article', ['content-fragment-wrapper']);
-  wrapper.dataset.aueType = 'reference';
-  wrapper.dataset.aueResource = config.path;
+  // Clear existing markup
+  block.innerHTML = '';
+  block.classList.add('content-fragment-initialized');
+
+  if (displayStyle) {
+    block.classList.add(`content-fragment--${displayStyle}`);
+  }
+  if (alignment) {
+    block.classList.add(`content-fragment--${alignment}`);
+  }
+  if (ctaStyle) {
+    block.classList.add(`content-fragment--${ctaStyle}`);
+  }
+
+  const articleEl = document.createElement('article');
+  articleEl.className = 'content-fragment-article';
+
+  // UE instrumentation: reference to the CF item
+  if (article._path) {
+    articleEl.dataset.aueResource = article._path;
+    articleEl.dataset.aueType = 'reference';
+    articleEl.dataset.aueLabel = article.headline || 'Content Fragment';
+  }
+
+  // Hero image (if present)
+  if (article.heroImage) {
+    const imgUrl =
+      article.heroImage._dynamicUrl ||
+      article.heroImage._publishUrl ||
+      article.heroImage._authorUrl;
+
+    if (imgUrl) {
+      const figure = document.createElement('figure');
+      figure.className = 'content-fragment-hero';
+      figure.dataset.aueProp = 'heroImage';
+      figure.dataset.aueType = 'content-reference';
+
+      const img = document.createElement('img');
+      img.src = imgUrl;
+      img.alt = article.headline || '';
+
+      figure.appendChild(img);
+      articleEl.appendChild(figure);
+    }
+  }
+
+  const body = document.createElement('div');
+  body.className = 'content-fragment-body';
 
   // Headline
   if (article.headline) {
-    const h = createElement('h2', ['content-fragment-headline']);
-    h.textContent = article.headline;
-    h.dataset.aueProp = 'headline';
-    h.dataset.aueType = 'text';
-    wrapper.appendChild(h);
+    const h2 = document.createElement('h2');
+    h2.className = 'content-fragment-headline';
+    h2.textContent = article.headline;
+    h2.dataset.aueProp = 'headline';
+    h2.dataset.aueType = 'text';
+    body.appendChild(h2);
   }
 
-  // Hero image
-  if (article.heroImage) {
-    const imgRef = article.heroImage;
-    const imgUrl = imgRef._dynamicUrl || imgRef._publishUrl || imgRef._authorUrl || '';
+  // NOTE:
+  // Your current ArticleByPath query doesn't include "main { plaintext }".
+  // If you add that back, you can render it here, e.g.:
+  //
+  // if (article.main?.plaintext) {
+  //   const p = document.createElement('p');
+  //   p.className = 'content-fragment-main';
+  //   p.textContent = article.main.plaintext;
+  //   p.dataset.aueProp = 'main';
+  //   p.dataset.aueType = 'richtext';
+  //   body.appendChild(p);
+  // }
 
-    if (imgUrl) {
-      const figure = createElement('figure', ['content-fragment-hero']);
-      figure.dataset.aueProp = 'heroImage';
-      figure.dataset.aueType = 'reference';
-
-      const img = createElement('img');
-      img.src = imgUrl;
-      img.alt = article.headline || '';
-      img.loading = 'lazy';
-
-      figure.appendChild(img);
-      wrapper.appendChild(figure);
-    }
-  }
-
-  // Optional: show variation or metadata if you like
-  // Example: wrapper.dataset.variation = config.variation;
-
-  block.appendChild(wrapper);
-
-  // Apply visual style classes to the block itself
-  if (config.displayStyle) {
-    block.classList.add(config.displayStyle);
-  }
-  if (config.alignment) {
-    block.classList.add(config.alignment);
-  }
-  if (config.ctaStyle) {
-    block.classList.add(config.ctaStyle);
-  }
+  articleEl.appendChild(body);
+  block.appendChild(articleEl);
 }
 
 /**
- * Block entry point.
+ * Default decorate entry point for the block.
  */
 export default async function decorate(block) {
+  const config = getFragmentConfigFromBlock(block);
+  if (!config) {
+    return;
+  }
+
+  block.classList.add('content-fragment-loading');
+
   try {
-    const config = getFragmentConfigFromBlock(block);
-    if (!config) {
-      return;
-    }
-
-    const article = await fetchArticle(config.path, config.variation);
-
+    const article = await fetchArticle(config);
     if (!article) {
-      // eslint-disable-next-line no-console
-      console.warn('content-fragment: no article returned for path', config.path);
+      block.classList.remove('content-fragment-loading');
+      block.classList.add('content-fragment-empty');
       return;
     }
 
-    renderArticle(block, config, article);
+    renderArticle(block, article, config);
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load content fragment article', e);
+    console.error('content-fragment: failed to load content fragment', e);
+    block.classList.remove('content-fragment-loading');
+    block.classList.add('content-fragment-error');
+  } finally {
+    block.classList.remove('content-fragment-loading');
   }
 }

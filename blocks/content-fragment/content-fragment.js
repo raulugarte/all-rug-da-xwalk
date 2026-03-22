@@ -102,7 +102,11 @@ async function fetchArticle(path, variation) {
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
+      console.error(
+        'content-fragment: GraphQL request failed',
+        resp.status,
+        resp.statusText,
+      );
       return null;
     }
 
@@ -130,7 +134,7 @@ async function fetchArticle(path, variation) {
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment } = cfg;
+  const { displayStyle, alignment, variation } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -149,6 +153,27 @@ function renderArticle(block, article, cfg) {
   const wrapper = document.createElement('div');
   wrapper.className = 'content-fragment-inner';
 
+  /**
+   * Universal Editor instrumentation
+   *
+   * Mark this block as a Content Fragment *reference* and point to the
+   * correct variation so UE can PATCH back to AEM.
+   *
+   * - data-aue-resource: urn:aemconnection:/content/dam/.../cf/jcr:content/data/<variation>
+   * - data-aue-type:     "reference" (CF reference)
+   * - data-aue-label:    nice label in UE (headline or path)
+   */
+  const cfPath = article._path || cfg.path || null;
+  if (cfPath) {
+    const variationSegment = (variation && variation.trim()) || 'master';
+    wrapper.setAttribute(
+      'data-aue-resource',
+      `urn:aemconnection:${cfPath}/jcr:content/data/${variationSegment}`,
+    );
+    wrapper.setAttribute('data-aue-type', 'reference');
+    wrapper.setAttribute('data-aue-label', article.headline || cfPath);
+  }
+
   const media = document.createElement('div');
   media.className = 'content-fragment-media';
 
@@ -161,6 +186,11 @@ function renderArticle(block, article, cfg) {
     img.className = 'content-fragment-image';
     img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
     img.alt = article.headline || '';
+
+    // UE: make hero image editable as a media field on the CF
+    img.setAttribute('data-aue-prop', 'heroImage');
+    img.setAttribute('data-aue-type', 'media');
+
     media.appendChild(img);
   }
 
@@ -169,6 +199,11 @@ function renderArticle(block, article, cfg) {
     const h2 = document.createElement('h2');
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
+
+    // UE: make headline in-place editable as simple text
+    h2.setAttribute('data-aue-prop', 'headline');
+    h2.setAttribute('data-aue-type', 'text');
+
     body.appendChild(h2);
   }
 
@@ -176,6 +211,10 @@ function renderArticle(block, article, cfg) {
   if (article.main) {
     const mainEl = document.createElement('div');
     mainEl.className = 'content-fragment-main';
+
+    // UE: map to the CF field "main" as rich text
+    mainEl.setAttribute('data-aue-prop', 'main');
+    mainEl.setAttribute('data-aue-type', 'richtext');
 
     if (article.main.html) {
       // HTML authored in the CF – render as HTML

@@ -1,33 +1,9 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Normalize variation values so we never end up with "undefined" as a string.
- *
- * Rules:
- * - null/undefined/''          → null
- * - 'undefined' (any case)     → null
- * - 'null' (any case)         → null
- * - otherwise                  → trimmed string
- */
-function normalizeVariation(raw) {
-  if (raw == null) {
-    return null;
-  }
-  const v = String(raw).trim();
-  if (!v) {
-    return null;
-  }
-  const lower = v.toLowerCase();
-  if (lower === 'undefined' || lower === 'null') {
-    return null;
-  }
-  return v;
-}
-
-/**
  * Parse the block text into:
  * - path           (line 1)
- * - variation      (line 2, required for GraphQL + UE, but we will default it)
+ * - variation      (line 2, required by current PQ, but we default to "master")
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
  * - ctaStyle       (line 5, optional – not used yet)
@@ -51,18 +27,44 @@ function getBlockConfig(block) {
   }
 
   const path = lines[0] || null;
-  const rawVariation = lines.length > 1 ? lines[1] : null;
+  const variation = lines.length > 1 ? lines[1] : null;
   const displayStyle = lines.length > 2 ? lines[2] : '';
   const alignment = lines.length > 3 ? lines[3] : '';
   const ctaStyle = lines.length > 4 ? lines[4] : '';
 
   return {
     path,
-    variation: rawVariation, // normalized later in decorate()
+    variation,
     displayStyle,
     alignment,
     ctaStyle,
   };
+}
+
+/**
+ * Normalize the variation coming from the block / code:
+ * - null / undefined → null
+ * - "" (empty)      → null
+ * - "undefined"     → null
+ * - "null"          → null
+ * - otherwise       → trimmed original string
+ */
+function normalizeVariation(raw) {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+
+  const trimmed = String(raw).trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (lower === 'undefined' || lower === 'null') {
+    return null;
+  }
+
+  return trimmed;
 }
 
 /**
@@ -98,15 +100,12 @@ async function getCsrfToken() {
  * }
  */
 async function fetchArticle(path, variation) {
-  // Double-normalize just to be absolutely safe
-  const normalized = normalizeVariation(variation) || 'master';
-
-  const body = {
-    variables: {
-      path,
-      variation: normalized,
-    },
+  const variables = {
+    path,
+    variation,
   };
+
+  const body = { variables };
 
   const headers = {
     'Content-Type': 'application/json',
@@ -120,6 +119,8 @@ async function fetchArticle(path, variation) {
   }
 
   try {
+    console.debug('content-fragment: fetching article with variables', variables);
+
     const resp = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers,
@@ -146,17 +147,9 @@ async function fetchArticle(path, variation) {
 
     const item = json?.data?.articleByPath?.item;
     if (!item) {
-      console.warn(
-        `content-fragment: no article returned for ${path} (variation: ${normalized})`,
-      );
+      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
       return null;
     }
-
-    console.debug('content-fragment: fetched article', {
-      path,
-      variation: normalized,
-      itemPath: item._path,
-    });
 
     return item;
   } catch (e) {
@@ -169,8 +162,7 @@ async function fetchArticle(path, variation) {
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment } = cfg;
-  const normalizedVariation = normalizeVariation(cfg.variation) || 'master';
+  const { displayStyle, alignment, variation, path } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -194,18 +186,35 @@ function renderArticle(block, article, cfg) {
    *
    * IMPORTANT:
    * - data-aue-resource points to the CF asset path (no /jcr:content/data).
-   * - data-aue-variation is taken from cfg.variation (line 2 of the block),
-   *   normalized so it is NEVER "undefined". Defaults to "master".
+   * - data-aue-variation is taken from cfg.variation (normalized).
+   *   This must be "master" or "testvar" etc. — never "undefined".
    */
 
-  const cfPath = article._path || cfg.path || null;
+  const cfPath = article._path || path || null;
   if (cfPath) {
-    wrapper.setAttribute('data-aue-resource', `urn:aemconnection:${cfPath}`);
+    const safeResource = `urn:aemconnection:${cfPath}`;
+    wrapper.setAttribute('data-aue-resource', safeResource);
     wrapper.setAttribute('data-aue-type', 'content-fragment');
     wrapper.setAttribute('data-aue-label', article.headline || cfPath);
 
-    // Use the same variation for UE that we use for GraphQL
-    wrapper.setAttribute('data-aue-variation', normalizedVariation);
+    // normalize again defensively before writing UE attribute
+    const normalizedForUE = normalizeVariation(variation) || 'master';
+
+    // As an extra guard, never set "undefined" as a variation
+    if (normalizedForUE && normalizedForUE.toLowerCase() !== 'undefined') {
+      wrapper.setAttribute('data-aue-variation', normalizedForUE);
+    } else {
+      // If something went very wrong, omit the attribute entirely
+      wrapper.removeAttribute('data-aue-variation');
+    }
+
+    console.debug(
+      'content-fragment: UE instrumentation',
+      {
+        'data-aue-resource': safeResource,
+        'data-aue-variation': wrapper.getAttribute('data-aue-variation') || '(none)',
+      },
+    );
   }
 
   const media = document.createElement('div');
@@ -254,6 +263,7 @@ function renderArticle(block, article, cfg) {
       // HTML authored in the CF – render as HTML
       mainEl.innerHTML = article.main.html;
     } else if (article.main.markdown) {
+      // If you want markdown rendered as plain text for now
       mainEl.textContent = article.main.markdown;
     } else if (article.main.plaintext) {
       mainEl.textContent = article.main.plaintext;
@@ -270,7 +280,7 @@ function renderArticle(block, article, cfg) {
 
   console.debug('content-fragment: rendered article', {
     path: cfPath,
-    variation: normalizedVariation,
+    variation: variation,
   });
 }
 
@@ -278,20 +288,25 @@ function renderArticle(block, article, cfg) {
  * Block entry point
  */
 export default async function decorate(block) {
-  const cfg = getBlockConfig(block);
+  const rawCfg = getBlockConfig(block);
+  console.debug('content-fragment: raw block config', rawCfg);
 
-  if (!cfg.path) {
+  if (!rawCfg.path) {
     console.warn('content-fragment: no path found, skipping fetch');
     return;
   }
 
-  // Normalize variation once and for all:
-  // - Missing / empty / "undefined"/"null" → default to "master"
-  const normalizedVariation = normalizeVariation(cfg.variation) || 'master';
-  cfg.variation = normalizedVariation;
+  // Normalize variation and default to "master" if missing/invalid
+  const normalizedVar = normalizeVariation(rawCfg.variation) || 'master';
 
-  console.debug('content-fragment: using configuration', cfg);
+  const cfg = {
+    ...rawCfg,
+    variation: normalizedVar,
+  };
 
+  console.debug('content-fragment: normalized config', cfg);
+
+  // We no longer hard-fail if second line is missing: we default to "master"
   const article = await fetchArticle(cfg.path, cfg.variation);
   if (!article) {
     return;

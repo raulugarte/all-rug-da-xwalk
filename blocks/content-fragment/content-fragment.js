@@ -6,7 +6,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * - variation      (line 2, required for GraphQL)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
- * - ctaStyle       (line 5, optional – not used yet)
+ * - ctaStyle       (line 5, optional – e.g. "cta-link", "cta-primary")
  *
  * Expected format:
  *
@@ -14,7 +14,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * testvar                             ← line 2: variation
  * image-left                          ← line 3: style
  * text-left                           ← line 4: alignment
- * cta-link                            ← line 5: CTA style
+ * cta-primary                         ← line 5: CTA style
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -134,7 +134,7 @@ async function fetchArticle(path, variation) {
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment } = cfg;
+  const { displayStyle, alignment, ctaStyle } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -143,14 +143,16 @@ function renderArticle(block, article, cfg) {
   block.classList.add('content-fragment');
 
   // Apply Style + Alignment from UE as CSS classes
+  // e.g. "image-left", "image-right", "image-top"
   if (displayStyle) {
-    block.classList.add(displayStyle); // e.g. "image-left"
+    block.classList.add(displayStyle);
   }
+  // e.g. "text-left", "text-center", "text-right"
   if (alignment) {
-    block.classList.add(alignment); // e.g. "text-left"
+    block.classList.add(alignment);
   }
 
-  const wrapper = document.createElement('div');
+  const wrapper = document.createElement('article');
   wrapper.className = 'content-fragment-inner';
 
   /**
@@ -158,9 +160,6 @@ function renderArticle(block, article, cfg) {
    *
    * For Content Fragments the resource must always point to
    * /jcr:content/data/master – variations are handled by the CF APIs.
-   *
-   * Example (from docs):
-   * data-aue-resource="urn:aemconnection:/content/dam/.../title/jcr:content/data/master"
    */
   const cfPath = article._path || cfg.path || null;
   if (cfPath) {
@@ -225,6 +224,29 @@ function renderArticle(block, article, cfg) {
     }
 
     body.appendChild(mainEl);
+  }
+
+  // Optional CTA – expects article.ctaLabel + article.ctaUrl (adapt to your model)
+  if (article.ctaLabel && article.ctaUrl) {
+    const ctaWrapper = document.createElement('div');
+    ctaWrapper.className = 'content-fragment-cta';
+
+    const cta = document.createElement('a');
+    cta.className = 'content-fragment-cta-link';
+    cta.href = article.ctaUrl;
+    cta.textContent = article.ctaLabel;
+
+    // Map UE config (line 5) to CSS variants, e.g. "cta-link", "cta-primary", "cta-secondary"
+    if (ctaStyle) {
+      cta.classList.add(ctaStyle);
+    }
+
+    // UE: make CTA editable as a link field if mapped in your model
+    cta.setAttribute('data-aue-prop', 'ctaUrl');
+    cta.setAttribute('data-aue-type', 'hyperlink');
+
+    ctaWrapper.appendChild(cta);
+    body.appendChild(ctaWrapper);
   }
 
   wrapper.append(media, body);

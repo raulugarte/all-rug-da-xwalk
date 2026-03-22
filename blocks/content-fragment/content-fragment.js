@@ -1,140 +1,184 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Extract config from data-* attributes or from text lines inside the block.
- * Current line-based convention:
- *   line 1: content fragment path
- *   line 2: variation
- *   line 3: style (image-left, image-right, image-top, image-bottom)
- *   line 4: alignment (text-left, text-right, text-center)
- *   line 5: cta style (cta-link, cta-button, ...)
+ * Extract configuration from the block.
+ *
+ * Supports two patterns:
+ * 1) Preferred: data attributes on the block element:
+ *    - data-reference
+ *    - data-content-fragment-variation
+ *    - data-displaystyle
+ *    - data-alignment
+ *    - data-ctastyle
+ *
+ * 2) Current (fallback): plain text lines inside the block:
+ *    line 1: path
+ *    line 2: variation (optional)
+ *    line 3: displaystyle (optional)
+ *    line 4: alignment (optional)
+ *    line 5: ctastyle (optional)
+ *
+ * @param {HTMLElement} block
+ * @returns {{ path: string, variation: string, displaystyle: string, alignment: string, ctaStyle: string }}
  */
 function getBlockConfig(block) {
-  const cfg = {
-    path: block.dataset.reference || '',
-    variation: block.dataset.contentFragmentVariation || '',
-    style: block.dataset.displaystyle || '',
-    alignment: block.dataset.alignment || '',
-    ctaStyle: block.dataset.ctastyle || '',
-  };
+  // 1. Try data-* attributes first (future-proof)
+  const path = block.dataset.reference || '';
+  const variation = block.dataset.contentFragmentVariation || '';
+  const displaystyle = block.dataset.displaystyle || '';
+  const alignment = block.dataset.alignment || '';
+  const ctaStyle = block.dataset.ctastyle || '';
 
-  // Fallback to parsing text lines if no data-* attributes are set
-  if (!cfg.path) {
-    const text = block.textContent || '';
-    const lines = text
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    if (lines.length >= 1) cfg.path = lines[0];
-    if (lines.length >= 2) cfg.variation = lines[1];
-    if (lines.length >= 3) cfg.style = lines[2];
-    if (lines.length >= 4) cfg.alignment = lines[3];
-    if (lines.length >= 5) cfg.ctaStyle = lines[4];
+  if (path) {
+    return { path, variation, displaystyle, alignment, ctaStyle };
   }
 
-  return cfg;
+  // 2. Fallback: parse text content by lines (matches your current setup)
+  const lines = (block.textContent || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  return {
+    path: lines[0] || '',
+    variation: lines[1] || '',
+    displaystyle: lines[2] || '',
+    alignment: lines[3] || '',
+    ctaStyle: lines[4] || '',
+  };
 }
 
-async function fetchArticle(path, variation) {
-  const url =
-    `${GRAPHQL_ENDPOINT}` +
-    `;path=${encodeURIComponent(path)}` +
-    (variation ? `;variation=${encodeURIComponent(variation)}` : '');
+/**
+ * Build the persisted query URL using matrix params, e.g.:
+ * /graphql/execute.json/securbank/ArticleByPath;path=/content/...;variation=testvar
+ *
+ * @param {string} path
+ * @param {string} variation
+ * @returns {string}
+ */
+function buildGraphqlUrl(path, variation) {
+  let url = `${GRAPHQL_ENDPOINT};path=${path}`;
+  if (variation) {
+    url += `;variation=${variation}`;
+  }
+  return url;
+}
 
-  const resp = await fetch(url, {
+/**
+ * Fetch article data for a given path + variation.
+ *
+ * @param {string} path
+ * @param {string} variation
+ * @returns {Promise<import('./types').ArticleData|null>}  // informal type hint
+ */
+async function fetchArticle(path, variation) {
+  const url = buildGraphqlUrl(path, variation);
+
+  const response = await fetch(url, {
+    method: 'GET',
     headers: {
       Accept: 'application/json',
     },
   });
 
-  if (!resp.ok) {
-    throw new Error(`GraphQL request failed: ${resp.status} ${resp.statusText}`);
+  if (!response.ok) {
+    console.error('contentfragment: GraphQL request failed', response.status, response.statusText);
+    return null;
   }
 
-  const json = await resp.json();
-  const articleByPath = json?.data?.articleByPath || json?.articleByPath;
-  return articleByPath?.item || null;
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    console.error('contentfragment: failed to parse GraphQL response as JSON', e);
+    return null;
+  }
+
+  if (!data || !data.data || !data.data.articleByPath || !data.data.articleByPath.item) {
+    console.warn('contentfragment: no article returned for', path, variation || '(no variation)');
+    return null;
+  }
+
+  return data.data.articleByPath.item;
 }
 
-function renderArticle(block, article /*, options = {} */) {
-  const { headline, heroImage } = article || {};
-
-  // Clear original text (path/style/alignment lines)
+/**
+ * Render the article data into the block.
+ *
+ * Currently renders:
+ * - headline
+ * - hero image (dynamicUrl, publishUrl, or path)
+ *
+ * @param {HTMLElement} block
+ * @param {object} article
+ * @param {string} displaystyle
+ * @param {string} alignment
+ * @param {string} ctaStyle
+ */
+function renderArticle(block, article, displaystyle, alignment, ctaStyle) {
   block.innerHTML = '';
+
+  const classes = ['content-fragment'];
+  if (displaystyle) classes.push(displaystyle);
+  if (alignment) classes.push(alignment);
+  if (ctaStyle) classes.push(ctaStyle);
+  block.classList.add(...classes);
 
   const wrapper = document.createElement('div');
   wrapper.className = 'content-fragment-inner';
 
-  const media = document.createElement('div');
-  media.className = 'content-fragment-media';
-
-  const body = document.createElement('div');
-  body.className = 'content-fragment-body';
+  // Headline
+  if (article.headline) {
+    const h2 = document.createElement('h2');
+    h2.className = 'content-fragment-headline';
+    h2.textContent = article.headline;
+    wrapper.appendChild(h2);
+  }
 
   // Hero image
-  if (heroImage) {
-    const imgUrl =
-      heroImage._dynamicUrl ||
-      heroImage._publishUrl ||
-      heroImage._path ||
-      '';
-
+  const hero = article.heroImage && article.heroImage[0];
+  if (hero) {
+    const imgUrl = hero._dynamicUrl || hero._publishUrl || hero._path;
     if (imgUrl) {
+      const figure = document.createElement('figure');
+      figure.className = 'content-fragment-hero';
+
       const img = document.createElement('img');
       img.src = imgUrl;
-      img.loading = 'lazy';
-      img.alt = headline || '';
-      media.append(img);
+      img.alt = article.headline || '';
+      figure.appendChild(img);
+
+      wrapper.appendChild(figure);
     }
   }
 
-  // Headline
-  if (headline) {
-    const h = document.createElement('h2');
-    h.className = 'content-fragment-headline';
-    h.textContent = headline;
-    body.append(h);
-  }
+  // TODO: extend with body text, metadata, CTAs, etc., if needed.
 
-  wrapper.append(media, body);
-  block.append(wrapper);
+  block.appendChild(wrapper);
 }
 
+/**
+ * Main decorate entrypoint for the block.
+ *
+ * @param {HTMLElement} block
+ */
 export default async function decorate(block) {
-  block.classList.add('content-fragment');
-
-  const cfg = getBlockConfig(block);
-  const { path, variation, style, alignment } = cfg;
+  const { path, variation, displaystyle, alignment, ctaStyle } = getBlockConfig(block);
 
   if (!path) {
-    // Nothing configured yet; do not throw, just skip
-    // eslint-disable-next-line no-console
-    console.warn('content-fragment: no reference set, skipping fetch');
+    // Nothing configured; leave block as-is
+    console.warn('contentfragment: no content fragment path found, skipping fetch');
     return;
-  }
-
-  // Apply style/alignment as classes on the block
-  if (style) {
-    block.classList.add(style); // e.g. image-left, image-right, ...
-  }
-  if (alignment) {
-    block.classList.add(alignment); // e.g. text-left, text-right, text-center
   }
 
   try {
     const article = await fetchArticle(path, variation);
     if (!article) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `content-fragment: no article returned for ${path} ${variation || ''}`,
-      );
       return;
     }
 
-    renderArticle(block, article);
+    renderArticle(block, article, displaystyle, alignment, ctaStyle);
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('content-fragment: failed to load article', e);
+    console.error('contentfragment: unexpected error while loading article', e);
   }
 }

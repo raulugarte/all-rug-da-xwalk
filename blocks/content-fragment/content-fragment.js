@@ -1,110 +1,40 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
-const ARTICLE_BY_PATH_QUERY = `
-  query ArticleByPath($path: String!, $variation: String!) {
-    articleByPath(_path: $path, variation: $variation) {
-      item {
-        headline
-        heroImage {
-          ... on ImageRef {
-            _path
-            _authorUrl
-            _publishUrl
-            _dynamicUrl
-          }
-        }
-        _variations
-        _metadata {
-          stringMetadata {
-            name
-            value
-          }
-        }
-      }
-      _references {
-        __typename
-      }
-    }
-  }
-`;
-
 /**
- * Call AEM GraphQL to fetch a content fragment by path + variation.
- */
-async function fetchArticle(path, variation) {
-  const body = JSON.stringify({
-    query: ARTICLE_BY_PATH_QUERY,
-    variables: {
-      path,
-      variation: variation || 'master',
-    },
-  });
-
-  const resp = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body,
-  });
-
-  if (!resp.ok) {
-    console.error('content-fragment: GraphQL HTTP error', resp.status, resp.statusText);
-    return null;
-  }
-
-  const json = await resp.json();
-
-  if (json.errors && json.errors.length) {
-    console.error('content-fragment: GraphQL errors', json.errors);
-    return null;
-  }
-
-  const article = json.data?.articleByPath?.item;
-  if (!article) {
-    console.warn('content-fragment: no article returned for path', path, 'variation', variation);
-    return null;
-  }
-
-  return article;
-}
-
-/**
- * Extract configuration from the block.
- * Supports:
- *   1) data-* attributes (preferred, future-proof)
- *   2) Fallback: text lines inside the block, matching your current HTML:
- *      line 0: content fragment path
- *      line 1: displaystyle
- *      line 2: alignment
- *      line 3: ctastyle
+ * Extract configuration from either:
+ * - data-* attributes (preferred long-term), or
+ * - text lines inside the block (your current setup):
+ *   line 1: content fragment path
+ *   line 2: displaystyle
+ *   line 3: alignment
+ *   line 4: ctastyle
  */
 function extractConfig(block) {
-  // 1) Preferred: data-* attributes
-  let path = block.dataset.reference || '';
-  let variation = block.dataset.contentFragmentVariation || '';
-  let displaystyle = block.dataset.displaystyle || '';
-  let alignment = block.dataset.alignment || '';
-  let ctastyle = block.dataset.ctastyle || '';
+  // 1) Try data-* attributes first
+  let path = (block.dataset.reference || '').trim();
+  let variation = (block.dataset.contentFragmentVariation || '').trim();
+  let displaystyle = (block.dataset.displaystyle || '').trim();
+  let alignment = (block.dataset.alignment || '').trim();
+  let ctastyle = (block.dataset.ctastyle || '').trim();
 
-  // 2) Fallback: parse plain text lines in the block (what you see in your first screenshot)
-  if (!path) {
-    const lines = block.textContent
+  // 2) Fall back to parsing text content (matches your current HTML)
+  if (!path || !displaystyle || !alignment || !ctastyle) {
+    const raw = (block.textContent || '').trim();
+    const lines = raw
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
-    if (lines.length > 0) {
-      path = lines[0];
-      if (!displaystyle && lines.length > 1) displaystyle = lines[1];
-      if (!alignment && lines.length > 2) alignment = lines[2];
-      if (!ctastyle && lines.length > 3) ctastyle = lines[3];
-    }
+    if (!path && lines[0]) path = lines[0];
+    if (!displaystyle && lines[1]) displaystyle = lines[1];
+    if (!alignment && lines[2]) alignment = lines[2];
+    if (!ctastyle && lines[3]) ctastyle = lines[3];
   }
 
-  // Default variation if nothing is set – adjust if your CF uses a different master name.
+  // Default variation if nothing is provided; adjust if your CF uses different naming
   if (!variation) {
-    variation = 'master';
+    // UE shows "Main"; CF variation is usually "main"
+    variation = 'main';
   }
 
   return {
@@ -117,53 +47,81 @@ function extractConfig(block) {
 }
 
 /**
- * Render the article into the block.
- * Adjust markup/CSS classes as needed for your design.
+ * Call the persisted GraphQL query ArticleByPath.
+ * For persisted queries, the body usually only contains the variables.
+ */
+async function fetchArticle(path, variation) {
+  if (!path) {
+    console.warn('contentfragment: no reference set, skipping fetch');
+    return null;
+  }
+
+  const body = {
+    path,
+    variation,
+  };
+
+  const resp = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    console.error('contentfragment: GraphQL request failed', resp.status, resp.statusText);
+    return null;
+  }
+
+  const data = await resp.json();
+  // Depending on how the persisted query is defined, structure may differ slightly.
+  // Adjust here if your JSON layout is different.
+  return data && data.data && data.data.articleByPath && data.data.articleByPath.item
+    ? data.data.articleByPath.item
+    : null;
+}
+
+/**
+ * Render the article (headline + hero image) into the block.
  */
 function renderArticle(block, article, cfg) {
   block.innerHTML = '';
 
   const wrapper = document.createElement('div');
-  wrapper.classList.add('content-fragment-inner');
+  wrapper.classList.add('contentfragment-inner');
 
   if (cfg.displaystyle) wrapper.classList.add(cfg.displaystyle);
   if (cfg.alignment) wrapper.classList.add(cfg.alignment);
   if (cfg.ctastyle) wrapper.classList.add(cfg.ctastyle);
 
-  const textContainer = document.createElement('div');
-  textContainer.classList.add('content-fragment-text');
-
+  // Headline
   if (article.headline) {
-    const h2 = document.createElement('h2');
-    h2.textContent = article.headline;
-    textContainer.appendChild(h2);
+    const h = document.createElement('h2');
+    h.textContent = article.headline;
+    wrapper.appendChild(h);
   }
 
-  const imgRef = article.heroImage;
-  let imgUrl = null;
-
-  if (imgRef) {
-    imgUrl = imgRef._dynamicUrl || imgRef._publishUrl || imgRef._authorUrl;
-  }
-
-  let mediaContainer = null;
-  if (imgUrl) {
-    mediaContainer = document.createElement('div');
-    mediaContainer.classList.add('content-fragment-media');
-
-    const picture = document.createElement('picture');
-    const img = document.createElement('img');
-    img.src = imgUrl;
-    img.alt = article.headline || '';
-    picture.appendChild(img);
-
-    mediaContainer.appendChild(picture);
-  }
-
-  // Very simple layout: image + text
-  wrapper.appendChild(textContainer);
-  if (mediaContainer) {
-    wrapper.appendChild(mediaContainer);
+  // Hero image
+  if (article.heroImage && Array.isArray(article.heroImage)) {
+    // GraphQL CF APIs often return arrays for multivalued fields
+    const hero = article.heroImage[0];
+    if (hero && (hero._dynamicUrl || hero._publishUrl || hero._path)) {
+      const img = document.createElement('img');
+      img.alt = article.headline || '';
+      img.src = hero._dynamicUrl || hero._publishUrl || hero._path;
+      img.loading = 'lazy';
+      wrapper.appendChild(img);
+    }
+  } else if (article.heroImage && typeof article.heroImage === 'object') {
+    const hero = article.heroImage;
+    if (hero._dynamicUrl || hero._publishUrl || hero._path) {
+      const img = document.createElement('img');
+      img.alt = article.headline || '';
+      img.src = hero._dynamicUrl || hero._publishUrl || hero._path;
+      img.loading = 'lazy';
+      wrapper.appendChild(img);
+    }
   }
 
   block.appendChild(wrapper);
@@ -173,16 +131,19 @@ export default async function decorate(block) {
   const cfg = extractConfig(block);
 
   if (!cfg.path) {
-    console.warn('content-fragment: no reference set, skipping fetch');
+    console.warn('contentfragment: no CF path found in block; nothing to render');
     return;
   }
 
   try {
     const article = await fetchArticle(cfg.path, cfg.variation);
-    if (!article) return;
+    if (!article) {
+      console.warn('contentfragment: no article returned for', cfg.path, cfg.variation);
+      return;
+    }
 
     renderArticle(block, article, cfg);
   } catch (e) {
-    console.error('content-fragment: unexpected error', e);
+    console.error('contentfragment: unexpected error while rendering', e);
   }
 }

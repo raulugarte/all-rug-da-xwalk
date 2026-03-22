@@ -1,73 +1,79 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Extract config for this block from data-* attributes and/or text lines.
- * Priority:
- * - data-reference, data-content-fragment-variation, data-displaystyle, data-alignment, data-ctastyle
- * - fallback: parse text lines inside the block
+ * Parse the block text into:
+ * - path
+ * - variation (optional)
+ * - displayStyle (image-left/right/top/bottom or default)
+ * - alignment (text-left/right/center)
+ * - ctaStyle (cta-link/cta-button/...)
  *
- * Text line parsing (if no data-*):
- *   line 1 = path
- *   remaining lines: try to map to style, alignment, ctaStyle, variation (in that order)
+ * Supported formats (from your screenshots):
+ *
+ * 1) Without variation:
+ *    line 1: path
+ *    line 2: style (image-left / image-right / image-top / image-bottom / default)
+ *    line 3: alignment (text-left / text-right / text-center)
+ *    line 4: cta style (cta-link / cta-button / cta-button-secondary / cta-button-dark)
+ *
+ * 2) With variation:
+ *    line 1: path
+ *    line 2: variation (e.g. testvar)
+ *    line 3: style
+ *    line 4: alignment
+ *    line 5: cta style
  */
 function getBlockConfig(block) {
-  const ds = block.dataset;
+  const lines = block.textContent
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
-  let path = ds.reference && ds.reference.trim();
-  let variation = ds.contentFragmentVariation && ds.contentFragmentVariation.trim();
-  let displayStyle = ds.displaystyle && ds.displaystyle.trim();
-  let alignment = ds.alignment && ds.alignment.trim();
-  let ctaStyle = ds.ctastyle && ds.ctastyle.trim();
+  if (!lines.length) {
+    return {};
+  }
 
-  // If reference not set via data-*, fall back to text lines
-  if (!path) {
-    const lines = block.textContent
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
+  const path = lines[0];
 
-    if (lines.length > 0) {
-      path = lines[0];
+  // Known style tokens
+  const styleTokens = new Set([
+    '', 'default',
+    'image-left', 'image-right', 'image-top', 'image-bottom',
+  ]);
 
-      const styleTokens = new Set([
-        '', 'default', 'image-left', 'image-right', 'image-top', 'image-bottom',
-        'image left', 'image right', 'image top', 'image bottom',
-      ]);
-      const alignTokens = new Set([
-        'text-left', 'text-right', 'text-center',
-        'left', 'right', 'center',
-      ]);
-      const ctaTokens = new Set([
-        'cta-link', 'cta-button', 'cta-button-secondary', 'cta-button-dark',
-        'link', 'primary button', 'secondary button', 'dark button',
-      ]);
+  let variation = null;
+  let displayStyle = null;
+  let alignment = null;
+  let ctaStyle = null;
 
-      // Go through remaining lines and classify them
-      lines.slice(1).forEach((line) => {
-        const lower = line.toLowerCase();
+  let idx = 1;
 
-        if (!displayStyle && styleTokens.has(lower)) {
-          displayStyle = line;
-          return;
-        }
-
-        if (!alignment && alignTokens.has(lower)) {
-          alignment = line;
-          return;
-        }
-
-        if (!ctaStyle && ctaTokens.has(lower)) {
-          ctaStyle = line;
-          return;
-        }
-
-        // If it's none of the above and we don't have a variation yet,
-        // treat this as the variation.
-        if (!variation) {
-          variation = line;
-        }
-      });
+  // Decide if line 2 is variation or style
+  if (lines[idx]) {
+    const l2 = lines[idx].toLowerCase();
+    if (!styleTokens.has(l2)) {
+      // Not a known style => treat as variation
+      variation = lines[idx];
+      idx += 1;
     }
+  }
+
+  // Style (if present)
+  if (lines[idx]) {
+    displayStyle = lines[idx];
+    idx += 1;
+  }
+
+  // Alignment (if present)
+  if (lines[idx]) {
+    alignment = lines[idx];
+    idx += 1;
+  }
+
+  // CTA style (if present)
+  if (lines[idx]) {
+    ctaStyle = lines[idx];
+    idx += 1;
   }
 
   return {
@@ -80,9 +86,8 @@ function getBlockConfig(block) {
 }
 
 /**
- * Call the persisted query.
- * If variation is present, send it as a matrix parameter.
- * If not, call without variation so the backend can use its default.
+ * Call the persisted query with matrix params:
+ * /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
  */
 async function fetchArticle(path, variation) {
   try {
@@ -127,19 +132,21 @@ async function fetchArticle(path, variation) {
 }
 
 /**
- * Renders the article into the block.
+ * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
   const { displayStyle, alignment } = cfg;
 
-  // Clear original config text
+  // Clear original config lines
   block.innerHTML = '';
+
+  // Ensure base class for CSS
   block.classList.add('content-fragment');
 
+  // Apply style + alignment classes from config
   if (displayStyle) {
     block.classList.add(displayStyle);
   }
-
   if (alignment) {
     block.classList.add(alignment);
   }
@@ -175,13 +182,13 @@ function renderArticle(block, article, cfg) {
 }
 
 /**
- * Block entry point.
+ * Block entry point
  */
 export default async function decorate(block) {
   const cfg = getBlockConfig(block);
 
   if (!cfg.path) {
-    console.warn('content-fragment: no reference set, skipping fetch');
+    console.warn('content-fragment: no path found, skipping fetch');
     return;
   }
 

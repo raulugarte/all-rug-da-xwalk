@@ -134,7 +134,7 @@ async function fetchArticle(path, variation) {
  * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment, variation } = cfg;
+  const { displayStyle, alignment } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -156,19 +156,17 @@ function renderArticle(block, article, cfg) {
   /**
    * Universal Editor instrumentation
    *
-   * Mark this block as a Content Fragment *reference* and point to the
-   * correct variation so UE can PATCH back to AEM.
+   * For Content Fragments the resource must always point to
+   * /jcr:content/data/master – variations are handled by the CF APIs.
    *
-   * - data-aue-resource: urn:aemconnection:/content/dam/.../cf/jcr:content/data/<variation>
-   * - data-aue-type:     "reference" (CF reference)
-   * - data-aue-label:    nice label in UE (headline or path)
+   * Example (from docs):
+   * data-aue-resource="urn:aemconnection:/content/dam/.../title/jcr:content/data/master"
    */
   const cfPath = article._path || cfg.path || null;
   if (cfPath) {
-    const variationSegment = (variation && variation.trim()) || 'master';
     wrapper.setAttribute(
       'data-aue-resource',
-      `urn:aemconnection:${cfPath}/jcr:content/data/${variationSegment}`,
+      `urn:aemconnection:${cfPath}/jcr:content/data/master`,
     );
     wrapper.setAttribute('data-aue-type', 'reference');
     wrapper.setAttribute('data-aue-label', article.headline || cfPath);
@@ -217,15 +215,12 @@ function renderArticle(block, article, cfg) {
     mainEl.setAttribute('data-aue-type', 'richtext');
 
     if (article.main.html) {
-      // HTML authored in the CF – render as HTML
       mainEl.innerHTML = article.main.html;
     } else if (article.main.markdown) {
-      // If you want markdown rendered as plain text for now
       mainEl.textContent = article.main.markdown;
     } else if (article.main.plaintext) {
       mainEl.textContent = article.main.plaintext;
     } else if (article.main.json) {
-      // Fallback: show JSON string (mainly useful for debugging)
       mainEl.textContent = JSON.stringify(article.main.json);
     }
 

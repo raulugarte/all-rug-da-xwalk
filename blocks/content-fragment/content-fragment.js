@@ -42,74 +42,45 @@ function getBlockConfig(block) {
 }
 
 /**
- * Fetch CSRF token on author (needed for POST).
- * On publish or if token endpoint is unavailable, we just return null.
+ * Build persisted query URL using *encoded* query variables.
+ *
+ * Docs pattern:
+ *   /graphql/execute.json/<PERSISTED_PATH>%3Bvar1%3Dvalue1%3Bvar2%3Dvalue2
+ *
+ * We follow:
+ *   GRAPHQL_ENDPOINT + encodeURIComponent(`;path=${path};variation=${variation}`)
  */
-async function getCsrfToken() {
-  try {
-    const resp = await fetch('/libs/granite/csrf/token.json', {
-      credentials: 'same-origin',
-      cache: 'no-store',
-    });
-    if (!resp.ok) {
-      return null;
-    }
-    const data = await resp.json();
-    return data.token || null;
-  } catch (e) {
-    // Not fatal; we may be on publish or a non-AEM domain
-    return null;
-  }
+function buildPersistedQueryUrl(path, variation) {
+  const rawVars = `;path=${path};variation=${variation}`;
+  const encodedVars = encodeURIComponent(rawVars);
+  return `${GRAPHQL_ENDPOINT}${encodedVars}`;
 }
 
 /**
- * Call the persisted query using POST + JSON body:
- *
- * POST /graphql/execute.json/securbank/ArticleByPath
- * {
- *   "variables": {
- *     "path": "...",
- *     "variation": "..."
- *   }
- * }
+ * Call the persisted query using GET:
+ *   GET /graphql/execute.json/securbank/ArticleByPath%3Bpath%3D...%3Bvariation%3Dtestvar
  */
 async function fetchArticle(path, variation) {
-  const body = {
-    variables: {
-      path,
-      variation,
-    },
-  };
-
-  const headers = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-
-  // Try to get CSRF token (needed on author)
-  const token = await getCsrfToken();
-  if (token) {
-    headers['CSRF-Token'] = token;
-  }
+  const url = buildPersistedQueryUrl(path, variation);
 
   try {
-    const resp = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      credentials: 'same-origin',
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
       cache: 'no-store',
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
+      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
       return null;
     }
 
     const json = await resp.json();
 
     if (json.errors) {
-      console.error('content-fragment: GraphQL errors', json.errors, 'for body', body);
+      console.error('content-fragment: GraphQL errors', json.errors, 'for url', url);
       return null;
     }
 
@@ -135,7 +106,8 @@ function renderArticle(block, article, cfg) {
   // Clear original text lines
   block.innerHTML = '';
 
-  // Base class for CSS
+  // Base class for CSS; block already has `block contentfragment`
+  // This adds an extra hook, but is optional.
   block.classList.add('content-fragment');
 
   // Apply Style + Alignment from UE as CSS classes
@@ -188,9 +160,7 @@ export default async function decorate(block) {
   }
 
   if (!cfg.variation) {
-    console.warn(
-      'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
-    );
+    console.warn('content-fragment: no variation (second line) found, skipping fetch');
     return;
   }
 

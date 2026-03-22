@@ -1,171 +1,103 @@
-/* Base block styling */
+/* Base block layout */
 .block.content-fragment {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background: #fff;
-  border-radius: 0.5rem;
-  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
-/* Inner layout wrapper */
-.block.content-fragment .content-fragment-inner {
+.content-fragment-inner {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
   align-items: flex-start;
 }
 
-/* Media and body areas */
-.block.content-fragment .content-fragment-media {
+/* Media and body wrappers */
+.content-fragment-media {
   flex: 0 0 40%;
+  max-width: 40%;
 }
 
-.block.content-fragment .content-fragment-media img {
+.content-fragment-body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Image */
+.content-fragment-image {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
-  border-radius: 0.5rem;
+  border-radius: 4px;
+  object-fit: cover;
 }
 
-.block.content-fragment .content-fragment-body {
-  flex: 1 1 auto;
-}
-
-/* Typography */
-.block.content-fragment .content-fragment-headline {
-  margin: 0 0 0.5rem;
+/* Headline */
+.content-fragment-headline {
+  margin: 0 0 0.75rem;
   font-size: 1.5rem;
   line-height: 1.3;
 }
 
-.block.content-fragment .content-fragment-text {
-  margin: 0 0 1rem;
-  line-height: 1.6;
+/* ---------- Style (image placement) ---------- */
+
+/* Image Left (default flex direction) */
+.block.content-fragment.image-left .content-fragment-inner {
+  flex-direction: row;
 }
 
-/* --- Style: image position (Style dropdown) --- */
-
-/* Default: behave like image-left */
-.block.content-fragment,
-.block.content-fragment.image-left {
-  /* nothing special: base flex-row layout */
-}
-
+/* Image Right */
 .block.content-fragment.image-right .content-fragment-inner {
   flex-direction: row-reverse;
 }
 
+/* Image Top */
 .block.content-fragment.image-top .content-fragment-inner {
   flex-direction: column;
 }
 
+.block.content-fragment.image-top .content-fragment-media,
+.block.content-fragment.image-top .content-fragment-body {
+  max-width: 100%;
+}
+
+/* Image Bottom */
 .block.content-fragment.image-bottom .content-fragment-inner {
   flex-direction: column-reverse;
 }
 
-/* --- Alignment (Alignment dropdown) --- */
+.block.content-fragment.image-bottom .content-fragment-media,
+.block.content-fragment.image-bottom .content-fragment-body {
+  max-width: 100%;
+}
+
+/* ---------- Alignment (text alignment only) ---------- */
 
 .block.content-fragment.text-left .content-fragment-body {
   text-align: left;
-}
-
-.block.content-fragment.text-center .content-fragment-body {
-  text-align: center;
 }
 
 .block.content-fragment.text-right .content-fragment-body {
   text-align: right;
 }
 
-/* When text is centered/right, also center/right CTA by default */
-.block.content-fragment.text-center .content-fragment-cta {
-  justify-content: center;
+.block.content-fragment.text-center .content-fragment-body {
+  text-align: center;
 }
 
-.block.content-fragment.text-right .content-fragment-cta {
-  justify-content: flex-end;
-}
-
-/* --- CTA styles (CTA Style dropdown) --- */
-
-.block.content-fragment .content-fragment-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-/* Link */
-.block.content-fragment .content-fragment-cta.cta-link {
-  color: #005ea5;
-  font-weight: 500;
-}
-
-.block.content-fragment .content-fragment-cta.cta-link:hover {
-  text-decoration: underline;
-}
-
-/* Primary button */
-.block.content-fragment .content-fragment-cta.cta-button {
-  padding: 0.5rem 1.25rem;
-  border-radius: 999px;
-  background: #005ea5;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-}
-
-.block.content-fragment .content-fragment-cta.cta-button:hover {
-  background: #00457a;
-}
-
-/* Secondary button */
-.block.content-fragment .content-fragment-cta.cta-button-secondary {
-  padding: 0.5rem 1.25rem;
-  border-radius: 999px;
-  background: transparent;
-  color: #005ea5;
-  font-weight: 600;
-  border: 1px solid #005ea5;
-}
-
-.block.content-fragment .content-fragment-cta.cta-button-secondary:hover {
-  background: rgba(0, 94, 165, 0.06);
-}
-
-/* Dark button */
-.block.content-fragment .content-fragment-cta.cta-button-dark {
-  padding: 0.5rem 1.25rem;
-  border-radius: 999px;
-  background: #111827;
-  color: #fff;
-  font-weight: 600;
-  border: none;
-}
-
-.block.content-fragment .content-fragment-cta.cta-button-dark:hover {
-  background: #020617;
-}
-
-/* --- Responsive behaviour --- */
+/* ---------- Responsive tweaks ---------- */
 
 @media (max-width: 768px) {
-  .block.content-fragment .content-fragment-inner {
+  .content-fragment-inner {
     flex-direction: column;
   }
 
-  .block.content-fragment .content-fragment-media {
-    flex: 0 0 auto;
-  }
-
-  /* On mobile, ignore left/right layout styles and just stack */
-  .block.content-fragment.image-left .content-fragment-inner,
-  .block.content-fragment.image-right .content-fragment-inner {
-    flex-direction: column;
-  }
-
-  .block.content-fragment .content-fragment-body {
-    text-align: left; /* or keep alignment if you prefer */
+  .content-fragment-media,
+  .content-fragment-body {
+    max-width: 100%;
+    flex: 1 1 100%;
   }
 }

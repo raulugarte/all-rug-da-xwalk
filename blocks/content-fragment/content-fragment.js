@@ -1,67 +1,71 @@
 const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
- * Extract configuration from either:
- * - data-* attributes (preferred long-term), or
- * - text lines inside the block (your current setup):
- *   line 1: content fragment path
- *   line 2: displaystyle
- *   line 3: alignment
- *   line 4: ctastyle
+ * Read config from block.
+ * Supports two patterns:
+ * 1) data-* attributes (future-proof)
+ * 2) plain text lines inside the block (what you currently have)
  */
-function extractConfig(block) {
-  // 1) Try data-* attributes first
+function readConfig(block) {
   let path = (block.dataset.reference || '').trim();
-  let variation = (block.dataset.contentFragmentVariation || '').trim();
   let displaystyle = (block.dataset.displaystyle || '').trim();
   let alignment = (block.dataset.alignment || '').trim();
   let ctastyle = (block.dataset.ctastyle || '').trim();
 
-  // 2) Fall back to parsing text content (matches your current HTML)
-  if (!path || !displaystyle || !alignment || !ctastyle) {
-    const raw = (block.textContent || '').trim();
-    const lines = raw
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+  // Fallback: parse lines from children (current HTML structure)
+  if (!path) {
+    const lines = [...block.children]
+      .map((el) => (el.textContent || '').trim())
+      .filter(Boolean);
 
-    if (!path && lines[0]) path = lines[0];
-    if (!displaystyle && lines[1]) displaystyle = lines[1];
-    if (!alignment && lines[2]) alignment = lines[2];
-    if (!ctastyle && lines[3]) ctastyle = lines[3];
+    if (lines.length > 0) {
+      path = lines[0];
+      displaystyle = lines[1] || '';
+      alignment = lines[2] || '';
+      ctastyle = lines[3] || '';
+    }
   }
 
-  // Default variation if nothing is provided; adjust if your CF uses different naming
-  if (!variation) {
-    // UE shows "Main"; CF variation is usually "main"
-    variation = 'main';
-  }
-
-  return {
-    path,
-    variation,
-    displaystyle,
-    alignment,
-    ctastyle,
-  };
+  return { path, displaystyle, alignment, ctastyle };
 }
 
 /**
- * Call the persisted GraphQL query ArticleByPath.
- * For persisted queries, the body usually only contains the variables.
+ * Determine which variation values to try.
+ * - Uses data-content-fragment-variation if present.
+ * - Also tries stripped version (remove leading/trailing '!')
+ * - Then falls back to "", "master", "main".
  */
-async function fetchArticle(path, variation) {
-  if (!path) {
-    console.warn('contentfragment: no reference set, skipping fetch');
-    return null;
+function getVariationCandidates(block) {
+  const raw = (block.dataset.contentFragmentVariation || '').trim();
+  const candidates = [];
+
+  if (raw) {
+    candidates.push(raw);
+    const stripped = raw.replace(/^!|!$/g, '');
+    if (stripped && stripped !== raw) {
+      candidates.push(stripped);
+    }
   }
 
+  // Fallbacks – order matters
+  candidates.push('');
+  candidates.push('master');
+  candidates.push('main');
+
+  // Deduplicate while preserving order
+  return [...new Set(candidates)];
+}
+
+/**
+ * Call persisted GraphQL query for a specific variation.
+ */
+async function fetchArticleOnce(path, variation) {
   const body = {
     path,
     variation,
   };
 
-  const resp = await fetch(GRAPHQL_ENDPOINT, {
+  const res = await fetch(GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -69,81 +73,126 @@ async function fetchArticle(path, variation) {
     body: JSON.stringify(body),
   });
 
-  if (!resp.ok) {
-    console.error('contentfragment: GraphQL request failed', resp.status, resp.statusText);
+  if (!res.ok) {
+    console.error('contentfragment: GraphQL request failed', res.status, res.statusText);
     return null;
   }
 
-  const data = await resp.json();
-  // Depending on how the persisted query is defined, structure may differ slightly.
-  // Adjust here if your JSON layout is different.
-  return data && data.data && data.data.articleByPath && data.data.articleByPath.item
-    ? data.data.articleByPath.item
+  const json = await res.json();
+
+  if (json.errors && json.errors.length) {
+    console.error('contentfragment: GraphQL errors', json.errors);
+    return null;
+  }
+
+  return json.data && json.data.articleByPath && json.data.articleByPath.item
+    ? json.data.articleByPath.item
     : null;
 }
 
 /**
- * Render the article (headline + hero image) into the block.
+ * Try multiple variation values until one returns an article.
  */
-function renderArticle(block, article, cfg) {
+async function fetchArticle(path, block) {
+  const variations = getVariationCandidates(block);
+
+  for (const variation of variations) {
+    try {
+      const article = await fetchArticleOnce(path, variation);
+      if (article) {
+        console.debug('contentfragment: loaded article for', path, 'variation:', variation);
+        return { article, variationUsed: variation };
+      }
+    } catch (e) {
+      console.error('contentfragment: error fetching article for', path, 'variation:', variation, e);
+    }
+  }
+
+  console.warn(
+    'contentfragment: no article returned for',
+    path,
+    'tried variations:',
+    variations.join(', '),
+  );
+  return null;
+}
+
+/**
+ * Render the article content into the block.
+ */
+function renderArticle(block, article, uiConfig) {
+  const { displaystyle, alignment, ctastyle } = uiConfig;
+
+  // Clear original content (path, style lines, etc.)
   block.innerHTML = '';
 
-  const wrapper = document.createElement('div');
-  wrapper.classList.add('contentfragment-inner');
+  block.classList.add('contentfragment');
+  if (displaystyle) block.classList.add(displaystyle);
+  if (alignment) block.classList.add(alignment);
+  if (ctastyle) block.classList.add(ctastyle);
 
-  if (cfg.displaystyle) wrapper.classList.add(cfg.displaystyle);
-  if (cfg.alignment) wrapper.classList.add(cfg.alignment);
-  if (cfg.ctastyle) wrapper.classList.add(cfg.ctastyle);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'contentfragment-inner';
 
   // Headline
   if (article.headline) {
     const h = document.createElement('h2');
+    h.className = 'contentfragment-headline';
     h.textContent = article.headline;
     wrapper.appendChild(h);
   }
 
-  // Hero image
-  if (article.heroImage && Array.isArray(article.heroImage)) {
-    // GraphQL CF APIs often return arrays for multivalued fields
-    const hero = article.heroImage[0];
-    if (hero && (hero._dynamicUrl || hero._publishUrl || hero._path)) {
+  // Hero image (handle single or array)
+  const hero = Array.isArray(article.heroImage)
+    ? article.heroImage[0]
+    : article.heroImage;
+
+  if (hero) {
+    const imgUrl = hero._dynamicUrl || hero._publishUrl || hero._path;
+    if (imgUrl) {
       const img = document.createElement('img');
+      img.className = 'contentfragment-hero-image';
+      img.src = imgUrl;
       img.alt = article.headline || '';
-      img.src = hero._dynamicUrl || hero._publishUrl || hero._path;
-      img.loading = 'lazy';
       wrapper.appendChild(img);
     }
-  } else if (article.heroImage && typeof article.heroImage === 'object') {
-    const hero = article.heroImage;
-    if (hero._dynamicUrl || hero._publishUrl || hero._path) {
-      const img = document.createElement('img');
-      img.alt = article.headline || '';
-      img.src = hero._dynamicUrl || hero._publishUrl || hero._path;
-      img.loading = 'lazy';
-      wrapper.appendChild(img);
-    }
+  }
+
+  // Example: metadata dump for debugging (optional)
+  if (article._metadata && article._metadata.stringMetadata) {
+    const metaContainer = document.createElement('dl');
+    metaContainer.className = 'contentfragment-metadata';
+
+    article._metadata.stringMetadata.forEach((m) => {
+      const dt = document.createElement('dt');
+      dt.textContent = m.name;
+      const dd = document.createElement('dd');
+      dd.textContent = m.value;
+      metaContainer.appendChild(dt);
+      metaContainer.appendChild(dd);
+    });
+
+    wrapper.appendChild(metaContainer);
   }
 
   block.appendChild(wrapper);
 }
 
 export default async function decorate(block) {
-  const cfg = extractConfig(block);
+  const config = readConfig(block);
+  const { path } = config;
 
-  if (!cfg.path) {
-    console.warn('contentfragment: no CF path found in block; nothing to render');
+  if (!path) {
+    console.warn('contentfragment: no reference set, skipping fetch');
     return;
   }
 
-  try {
-    const article = await fetchArticle(cfg.path, cfg.variation);
-    if (!article) {
-      console.warn('contentfragment: no article returned for', cfg.path, cfg.variation);
-      return;
-    }
-
-    renderArticle(block, article, cfg);
-  } catch (e) {
-    console.error('contentfragment: unexpected error while rendering', e);
+  const result = await fetchArticle(path, block);
+  if (!result) {
+    // Already logged reason(s)
+    return;
   }
+
+  const { article /*, variationUsed*/ } = result;
+  renderArticle(block, article, config);
 }

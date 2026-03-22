@@ -28,8 +28,12 @@
 }
 
 .cards-product .cards-product-card-image img {
+  /* RUG 
   width: 80px;
   height: 80px;
+  */
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 

@@ -2,19 +2,11 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 
 /**
  * Parse the block text into:
- * - path           (line 1)
- * - variation      (line 2, required for GraphQL)
- * - displayStyle   (line 3, optional)
- * - alignment      (line 4, optional)
- * - ctaStyle       (line 5, optional – not used yet)
- *
- * Expected format:
- *
- * /content/dam/.../allianz-offer      ← line 1: path
- * testvar                             ← line 2: variation
- * image-left                          ← line 3: style
- * text-left                           ← line 4: alignment
- * cta-link                            ← line 5: CTA style
+ * - path         (line 1)
+ * - variation    (line 2, required)
+ * - displayStyle (line 3, optional)
+ * - alignment    (line 4, optional)
+ * - ctaStyle     (line 5, optional – currently unused)
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -42,26 +34,11 @@ function getBlockConfig(block) {
 }
 
 /**
- * Build persisted query URL using *encoded* query variables.
- *
- * Docs pattern:
- *   /graphql/execute.json/<PERSISTED_PATH>%3Bvar1%3Dvalue1%3Bvar2%3Dvalue2
- *
- * We follow:
- *   GRAPHQL_ENDPOINT + encodeURIComponent(`;path=${path};variation=${variation}`)
- */
-function buildPersistedQueryUrl(path, variation) {
-  const rawVars = `;path=${path};variation=${variation}`;
-  const encodedVars = encodeURIComponent(rawVars);
-  return `${GRAPHQL_ENDPOINT}${encodedVars}`;
-}
-
-/**
- * Call the persisted query using GET:
- *   GET /graphql/execute.json/securbank/ArticleByPath%3Bpath%3D...%3Bvariation%3Dtestvar
+ * Call the persisted query exactly like your working GraphiQL URL:
+ *   /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
  */
 async function fetchArticle(path, variation) {
-  const url = buildPersistedQueryUrl(path, variation);
+  const url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)};variation=${encodeURIComponent(variation)}`;
 
   try {
     const resp = await fetch(url, {
@@ -73,26 +50,26 @@ async function fetchArticle(path, variation) {
     });
 
     if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
+      console.error('contentfragment: GraphQL request failed', resp.status, resp.statusText, url);
       return null;
     }
 
     const json = await resp.json();
 
     if (json.errors) {
-      console.error('content-fragment: GraphQL errors', json.errors, 'for url', url);
+      console.error('contentfragment: GraphQL errors', json.errors, 'for url', url);
       return null;
     }
 
     const item = json?.data?.articleByPath?.item;
     if (!item) {
-      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
+      console.warn(`contentfragment: no article returned for ${path} (variation: ${variation})`);
       return null;
     }
 
     return item;
   } catch (e) {
-    console.error('content-fragment: fetch failed', e);
+    console.error('contentfragment: fetch failed', e);
     return null;
   }
 }
@@ -106,11 +83,11 @@ function renderArticle(block, article, cfg) {
   // Clear original text lines
   block.innerHTML = '';
 
-  // Base class for CSS; block already has `block contentfragment`
-  // This adds an extra hook, but is optional.
-  block.classList.add('content-fragment');
+  // Ensure we can target the block in CSS:
+  // <div class="block contentfragment contentfragment-block image-left text-left">
+  block.classList.add('contentfragment-block');
 
-  // Apply Style + Alignment from UE as CSS classes
+  // Apply Style + Alignment as CSS classes on the block
   if (displayStyle) {
     block.classList.add(displayStyle); // e.g. "image-left"
   }
@@ -119,18 +96,18 @@ function renderArticle(block, article, cfg) {
   }
 
   const wrapper = document.createElement('div');
-  wrapper.className = 'content-fragment-inner';
+  wrapper.className = 'contentfragment-inner';
 
   const media = document.createElement('div');
-  media.className = 'content-fragment-media';
+  media.className = 'contentfragment-media';
 
   const body = document.createElement('div');
-  body.className = 'content-fragment-body';
+  body.className = 'contentfragment-body';
 
   // Hero image
   if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
     const img = document.createElement('img');
-    img.className = 'content-fragment-image';
+    img.className = 'contentfragment-image';
     img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
     img.alt = article.headline || '';
     media.appendChild(img);
@@ -139,7 +116,7 @@ function renderArticle(block, article, cfg) {
   // Headline
   if (article.headline) {
     const h2 = document.createElement('h2');
-    h2.className = 'content-fragment-headline';
+    h2.className = 'contentfragment-headline';
     h2.textContent = article.headline;
     body.appendChild(h2);
   }
@@ -155,12 +132,12 @@ export default async function decorate(block) {
   const cfg = getBlockConfig(block);
 
   if (!cfg.path) {
-    console.warn('content-fragment: no path found, skipping fetch');
+    console.warn('contentfragment: no path found, skipping fetch');
     return;
   }
 
   if (!cfg.variation) {
-    console.warn('content-fragment: no variation (second line) found, skipping fetch');
+    console.warn('contentfragment: no variation (second line) found, skipping fetch');
     return;
   }
 

@@ -172,6 +172,27 @@ function renderArticle(block, article, cfg) {
     body.appendChild(h2);
   }
 
+  // Main body (from Content Fragment "main" element)
+  if (article.main) {
+    const mainEl = document.createElement('div');
+    mainEl.className = 'content-fragment-main';
+
+    if (article.main.html) {
+      // HTML authored in the CF – render as HTML
+      mainEl.innerHTML = article.main.html;
+    } else if (article.main.markdown) {
+      // If you want markdown rendered as plain text for now
+      mainEl.textContent = article.main.markdown;
+    } else if (article.main.plaintext) {
+      mainEl.textContent = article.main.plaintext;
+    } else if (article.main.json) {
+      // Fallback: show JSON string (mainly useful for debugging)
+      mainEl.textContent = JSON.stringify(article.main.json);
+    }
+
+    body.appendChild(mainEl);
+  }
+
   wrapper.append(media, body);
   block.appendChild(wrapper);
 }

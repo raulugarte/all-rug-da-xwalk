@@ -3,7 +3,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
 /**
  * Parse the block text into:
  * - path           (line 1)
- * - variation      (line 2, required for GraphQL & UE)
+ * - variation      (line 2, required for GraphQL)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
  * - ctaStyle       (line 5, optional – not used yet)
@@ -102,7 +102,6 @@ async function fetchArticle(path, variation) {
     });
 
     if (!resp.ok) {
-      // eslint-disable-next-line no-console
       console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
       return null;
     }
@@ -110,47 +109,40 @@ async function fetchArticle(path, variation) {
     const json = await resp.json();
 
     if (json.errors) {
-      // eslint-disable-next-line no-console
       console.error('content-fragment: GraphQL errors', json.errors, 'for body', body);
       return null;
     }
 
     const item = json?.data?.articleByPath?.item;
     if (!item) {
-      // eslint-disable-next-line no-console
       console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
       return null;
     }
 
     return item;
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.error('content-fragment: fetch failed', e);
     return null;
   }
 }
 
 /**
- * Build the UE data-aue-resource URN for this CF + variation.
- *
- * Example:
- *   path      = /content/dam/securbank/articles/my-article
- *   variation = master
- *
- *   → urn:aemconnection:/content/dam/securbank/articles/my-article/jcr:content/data/master
+ * Build the JCR base path for the CF variation:
+ * /content/dam/.../jcr:content/data/<variation>
  */
-function buildContentFragmentUrn(path, variation) {
-  const variationSegment = variation || 'master';
-  const cfDataPath = `${path}/jcr:content/data/${variationSegment}`;
-  return `urn:aemconnection:${cfDataPath}`;
+function getCfVariationBasePath(cfg) {
+  if (!cfg.path || !cfg.variation) {
+    return null;
+  }
+  const normalizedPath = cfg.path.replace(/\/$/, '');
+  return `${normalizedPath}/jcr:content/data/${cfg.variation}`;
 }
 
 /**
- * Render the article inside the block, including
- * Universal Editor instrumentation for direct editing.
+ * Render the article inside the block
  */
 function renderArticle(block, article, cfg) {
-  const { displayStyle, alignment, path, variation } = cfg;
+  const { displayStyle, alignment } = cfg;
 
   // Clear original text lines
   block.innerHTML = '';
@@ -175,7 +167,13 @@ function renderArticle(block, article, cfg) {
   const body = document.createElement('div');
   body.className = 'content-fragment-body';
 
-  // Hero image
+  // Compute CF variation base path for UE instrumentation
+  const cfBasePath = getCfVariationBasePath(cfg);
+  const ueResourceBase = cfBasePath
+    ? `urn:aemconnection:${cfBasePath}`
+    : null;
+
+  // Hero image (read-only for UE here; we only instrument text fields)
   if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
     const img = document.createElement('img');
     img.className = 'content-fragment-image';
@@ -184,32 +182,24 @@ function renderArticle(block, article, cfg) {
     media.appendChild(img);
   }
 
-  /**
-   * UE CF reference wrapper
-   *
-   * This tells Universal Editor:
-   * - which CF + variation this block is bound to
-   * - that it is a CF reference
-   *
-   * IMPORTANT: data path includes the selected variation, so
-   * editing "testvar" persists into /data/testvar (not /data/master).
-   */
-  const cfWrapper = document.createElement('div');
-  cfWrapper.className = 'content-fragment-fields';
-  cfWrapper.dataset.aueResource = buildContentFragmentUrn(path, variation);
-  cfWrapper.dataset.aueType = 'reference';
-
-  // Headline (CF element "headline")
+  // Headline
   if (article.headline) {
     const h2 = document.createElement('h2');
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
 
-    // UE direct editing for "headline" element
-    h2.dataset.aueProp = 'headline';
-    h2.dataset.aueType = 'text';
+    // UE instrumentation for headline (CF element "headline")
+    if (ueResourceBase) {
+      h2.setAttribute(
+        'data-aue-resource',
+        `${ueResourceBase}/headline`,
+      );
+      h2.setAttribute('data-aue-type', 'text');
+      h2.setAttribute('data-aue-prop', 'text'); // underlying CF element property
+      h2.setAttribute('data-aue-label', 'Headline');
+    }
 
-    cfWrapper.appendChild(h2);
+    body.appendChild(h2);
   }
 
   // Main body (from Content Fragment "main" element)
@@ -217,15 +207,10 @@ function renderArticle(block, article, cfg) {
     const mainEl = document.createElement('div');
     mainEl.className = 'content-fragment-main';
 
-    // UE direct editing for "main" element
-    mainEl.dataset.aueProp = 'main';
-    mainEl.dataset.aueType = 'richtext';
-
     if (article.main.html) {
       // HTML authored in the CF – render as HTML
       mainEl.innerHTML = article.main.html;
     } else if (article.main.markdown) {
-      // If you want markdown rendered as plain text for now
       mainEl.textContent = article.main.markdown;
     } else if (article.main.plaintext) {
       mainEl.textContent = article.main.plaintext;
@@ -234,10 +219,20 @@ function renderArticle(block, article, cfg) {
       mainEl.textContent = JSON.stringify(article.main.json);
     }
 
-    cfWrapper.appendChild(mainEl);
+    // UE instrumentation for main body (CF element "main")
+    if (ueResourceBase) {
+      mainEl.setAttribute(
+        'data-aue-resource',
+        `${ueResourceBase}/main`,
+      );
+      mainEl.setAttribute('data-aue-type', 'richtext');
+      mainEl.setAttribute('data-aue-prop', 'text'); // underlying CF element property
+      mainEl.setAttribute('data-aue-label', 'Main');
+    }
+
+    body.appendChild(mainEl);
   }
 
-  body.appendChild(cfWrapper);
   wrapper.append(media, body);
   block.appendChild(wrapper);
 }
@@ -249,13 +244,11 @@ export default async function decorate(block) {
   const cfg = getBlockConfig(block);
 
   if (!cfg.path) {
-    // eslint-disable-next-line no-console
     console.warn('content-fragment: no path found, skipping fetch');
     return;
   }
 
   if (!cfg.variation) {
-    // eslint-disable-next-line no-console
     console.warn(
       'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
     );

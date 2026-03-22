@@ -1,102 +1,188 @@
-/* Debug: make sure this file is loaded */
-.block.contentfragment {
-  /* temporarily uncomment to verify CSS is applied */
-  /* outline: 2px solid red; */
-}
+/* Root container */
+.content-fragment {
+  --cf-bg: #ffffff;
+  --cf-border-radius: 8px;
+  --cf-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --cf-primary: #0054a6;       /* Allianz-style deep blue */
+  --cf-primary-dark: #003b7a;
+  --cf-accent: #00a9e0;        /* lighter accent blue */
+  --cf-text: #1c1c1c;
+  --cf-muted: #6b6f76;
 
-/* Base block layout */
-.block.contentfragment.content-fragment {
+  background-color: var(--cf-bg);
+  border-radius: var(--cf-border-radius);
+  box-shadow: var(--cf-shadow);
+  padding: 2.5rem 2.25rem;
+  margin: 2rem 0;
   box-sizing: border-box;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
 }
 
-/* Inner layout: media + body */
+/* Layout wrapper */
 .content-fragment-inner {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-start;
+  gap: 2rem;
+  align-items: stretch;
 }
 
+/* Media / image side */
 .content-fragment-media {
   flex: 0 0 40%;
   max-width: 40%;
 }
 
-.content-fragment-body {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-/* Image */
 .content-fragment-image {
   display: block;
   width: 100%;
-  height: auto;
-  border-radius: 4px;
+  height: 100%;
+  max-height: 320px;
   object-fit: cover;
+  border-radius: 6px;
 }
 
-/* Headline */
-.content-fragment-headline {
-  margin: 0 0 0.75rem;
-  font-size: 1.5rem;
-  line-height: 1.3;
-}
-
-/* ---------- Style (image placement) ---------- */
-
-/* Image Left (default flex direction) */
-.block.contentfragment.image-left .content-fragment-inner {
-  flex-direction: row;
-}
-
-/* Image Right */
-.block.contentfragment.image-right .content-fragment-inner {
-  flex-direction: row-reverse;
-}
-
-/* Image Top */
-.block.contentfragment.image-top .content-fragment-inner {
+/* Body / text side */
+.content-fragment-body {
+  flex: 1;
+  display: flex;
   flex-direction: column;
+  gap: 1rem;
 }
 
-.block.contentfragment.image-top .content-fragment-media,
-.block.contentfragment.image-top .content-fragment-body {
-  max-width: 100%;
+/* Headline styling (Allianz‑like) */
+.content-fragment-headline {
+  margin: 0;
+  font-size: 1.8rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--cf-primary-dark);
 }
 
-/* Image Bottom */
-.block.contentfragment.image-bottom .content-fragment-inner {
-  flex-direction: column-reverse;
+/* Main rich text */
+.content-fragment-main {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--cf-text);
 }
 
-.block.contentfragment.image-bottom .content-fragment-media,
-.block.contentfragment.image-bottom .content-fragment-body {
-  max-width: 100%;
+.content-fragment-main p {
+  margin: 0 0 0.75rem;
 }
 
-/* ---------- Alignment (text alignment only) ---------- */
+.content-fragment-main p:last-child {
+  margin-bottom: 0;
+}
 
-.block.contentfragment.text-left .content-fragment-body {
+/* Alignment variants (line 4) */
+.content-fragment.text-left {
   text-align: left;
 }
 
-.block.contentfragment.text-right .content-fragment-body {
-  text-align: right;
-}
-
-.block.contentfragment.text-center .content-fragment-body {
+.content-fragment.text-center {
   text-align: center;
 }
 
-/* ---------- Responsive tweaks ---------- */
+.content-fragment.text-center .content-fragment-body {
+  align-items: center;
+}
 
-@media (max-width: 768px) {
+.content-fragment.text-right {
+  text-align: right;
+  /* keep body aligned to the right edge */
+  align-items: flex-end;
+}
+
+/* Image layout variants (line 3) */
+.content-fragment.image-left .content-fragment-inner {
+  flex-direction: row;
+}
+
+.content-fragment.image-right .content-fragment-inner {
+  flex-direction: row-reverse;
+}
+
+.content-fragment.image-top .content-fragment-inner {
+  flex-direction: column;
+}
+
+.content-fragment.image-top .content-fragment-media,
+.content-fragment.image-top .content-fragment-body {
+  max-width: 100%;
+}
+
+/* CTA container */
+.content-fragment-cta {
+  margin-top: 1.5rem;
+}
+
+/* Base CTA link style */
+.content-fragment-cta-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.75rem;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
+}
+
+/* CTA variants driven by `ctaStyle` (line 5) */
+
+/* Simple Allianz-style text link */
+.content-fragment-cta-link.cta-link {
+  padding: 0; /* looks like a bare text link */
+  border-radius: 0;
+  color: var(--cf-primary);
+}
+
+.content-fragment-cta-link.cta-link:hover,
+.content-fragment-cta-link.cta-link:focus-visible {
+  color: var(--cf-primary-dark);
+  text-decoration: underline;
+}
+
+/* Primary pill button (deep blue, white text) */
+.content-fragment-cta-link.cta-primary {
+  background-color: var(--cf-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 84, 166, 0.35);
+}
+
+.content-fragment-cta-link.cta-primary:hover,
+.content-fragment-cta-link.cta-primary:focus-visible {
+  background-color: var(--cf-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 59, 122, 0.4);
+}
+
+/* Secondary outlined pill button */
+.content-fragment-cta-link.cta-secondary {
+  background-color: transparent;
+  color: var(--cf-primary);
+  border: 1px solid var(--cf-primary);
+}
+
+.content-fragment-cta-link.cta-secondary:hover,
+.content-fragment-cta-link.cta-secondary:focus-visible {
+  background-color: rgba(0, 84, 166, 0.06);
+}
+
+/* Default when no ctaStyle is provided – treat as primary button */
+.content-fragment-cta-link:not(.cta-link):not(.cta-primary):not(.cta-secondary) {
+  background-color: var(--cf-primary);
+  color: #ffffff;
+}
+
+/* Responsive behavior */
+@media (max-width: 900px) {
+  .content-fragment {
+    padding: 1.75rem 1.5rem;
+  }
+
   .content-fragment-inner {
     flex-direction: column;
   }
@@ -104,6 +190,24 @@
   .content-fragment-media,
   .content-fragment-body {
     max-width: 100%;
-    flex: 1 1 100%;
+  }
+
+  .content-fragment-media {
+    flex: 0 0 auto;
+  }
+
+  .content-fragment-headline {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .content-fragment {
+    padding: 1.5rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+
+  .content-fragment-headline {
+    font-size: 1.4rem;
   }
 }

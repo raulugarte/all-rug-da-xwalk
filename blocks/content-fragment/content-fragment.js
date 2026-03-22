@@ -10,7 +10,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  *
  * Supported formats (from your screenshots):
  *
- * 1) Without variation:
+ * 1) Without explicit variation:
  *    line 1: path
  *    line 2: style (image-left / image-right / image-top / image-bottom / default)
  *    line 3: alignment (text-left / text-right / text-center)
@@ -88,47 +88,67 @@ function getBlockConfig(block) {
 /**
  * Call the persisted query with matrix params:
  * /graphql/execute.json/securbank/ArticleByPath;path=...;variation=...
+ *
+ * If no variation is provided, try a set of common defaults:
+ *   !main!, main, (no variation param), master
  */
-async function fetchArticle(path, variation) {
-  try {
-    let url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)}`;
-    if (variation) {
-      url += `;variation=${encodeURIComponent(variation)}`;
-    }
+async function fetchArticle(path, initialVariation) {
+  const variationsToTry = [];
 
-    const resp = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!resp.ok) {
-      console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText);
-      return null;
-    }
-
-    const json = await resp.json();
-
-    if (json.errors) {
-      console.error('content-fragment: GraphQL errors', json.errors);
-    }
-
-    const item = json?.data?.articleByPath?.item;
-    if (!item) {
-      console.warn(
-        `content-fragment: no article returned for ${path}${
-          variation ? ` (variation: ${variation})` : ''
-        }`,
-      );
-      return null;
-    }
-
-    return item;
-  } catch (e) {
-    console.error('content-fragment: fetch failed', e);
-    return null;
+  if (initialVariation) {
+    variationsToTry.push(initialVariation);
   }
+
+  // Common defaults – deduped later
+  variationsToTry.push('!main!', 'main', '', 'master');
+
+  const tried = new Set();
+  for (const v of variationsToTry) {
+    if (tried.has(v)) continue;
+    tried.add(v);
+
+    let url = `${GRAPHQL_ENDPOINT};path=${encodeURIComponent(path)}`;
+    if (v) {
+      url += `;variation=${encodeURIComponent(v)}`;
+    }
+
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+      });
+
+      if (!resp.ok) {
+        console.error('content-fragment: GraphQL request failed', resp.status, resp.statusText, url);
+        continue;
+      }
+
+      const json = await resp.json();
+
+      if (json.errors) {
+        console.error('content-fragment: GraphQL errors', json.errors, 'for variation', v || '(none)');
+      }
+
+      const item = json?.data?.articleByPath?.item;
+      if (item) {
+        console.debug(
+          `content-fragment: loaded article for ${path} with variation '${v || '(none)'}'`,
+        );
+        return { item, variationUsed: v };
+      }
+    } catch (e) {
+      console.error('content-fragment: fetch failed for variation', v || '(none)', e);
+    }
+  }
+
+  console.warn(
+    `content-fragment: no article returned for ${path} after trying variations: ${Array.from(tried)
+      .map((v) => (v === '' ? '(none)' : v))
+      .join(', ')}`,
+  );
+  return null;
 }
 
 /**
@@ -192,10 +212,10 @@ export default async function decorate(block) {
     return;
   }
 
-  const article = await fetchArticle(cfg.path, cfg.variation);
-  if (!article) {
+  const result = await fetchArticle(cfg.path, cfg.variation);
+  if (!result) {
     return;
   }
 
-  renderArticle(block, article, cfg);
+  renderArticle(block, result.item, cfg);
 }

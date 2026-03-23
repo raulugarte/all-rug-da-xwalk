@@ -1,4 +1,5 @@
-const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
+const AEM_PUBLISH_URL = 'https://publish-p130407-e1279066.adobeaemcloud.com';
+const GRAPHQL_ENDPOINT = `${AEM_PUBLISH_URL}/graphql/execute.json/securbank/ArticleByPath`;
 
 /**
  * Parse the block text into:
@@ -6,15 +7,7 @@ const GRAPHQL_ENDPOINT = '/graphql/execute.json/securbank/ArticleByPath';
  * - variation      (line 2, required for GraphQL)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
- * - ctaStyle       (line 5, optional – e.g. "cta-link", "cta-primary")
- *
- * Expected format:
- *
- * /content/dam/.../allianz-offer      ← line 1: path
- * testvar                             ← line 2: variation
- * image-left                          ← line 3: style
- * text-left                           ← line 4: alignment
- * cta-primary                         ← line 5: CTA style
+ * - ctaStyle       (line 5, optional)
  */
 function getBlockConfig(block) {
   const lines = block.textContent
@@ -63,15 +56,7 @@ async function getCsrfToken() {
 }
 
 /**
- * Call the persisted query using POST + JSON body:
- *
- * POST /graphql/execute.json/securbank/ArticleByPath
- * {
- *   "variables": {
- *     "path": "...",
- *     "variation": "..."
- *   }
- * }
+ * Call the persisted query using POST + JSON body.
  */
 async function fetchArticle(path, variation) {
   const body = {
@@ -97,7 +82,7 @@ async function fetchArticle(path, variation) {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      credentials: 'same-origin',
+      credentials: 'omit', // Cross-origin, anonym
       cache: 'no-store',
     });
 
@@ -136,18 +121,12 @@ async function fetchArticle(path, variation) {
 function renderArticle(block, article, cfg) {
   const { displayStyle, alignment, ctaStyle } = cfg;
 
-  // Clear original text lines
   block.innerHTML = '';
-
-  // Base class for CSS
   block.classList.add('content-fragment');
 
-  // Apply Style + Alignment from UE as CSS classes
-  // e.g. "image-left", "image-right", "image-top"
   if (displayStyle) {
     block.classList.add(displayStyle);
   }
-  // e.g. "text-left", "text-center", "text-right"
   if (alignment) {
     block.classList.add(alignment);
   }
@@ -155,12 +134,6 @@ function renderArticle(block, article, cfg) {
   const wrapper = document.createElement('article');
   wrapper.className = 'content-fragment-inner';
 
-  /**
-   * Universal Editor instrumentation
-   *
-   * For Content Fragments the resource must always point to
-   * /jcr:content/data/master – variations are handled by the CF APIs.
-   */
   const cfPath = article._path || cfg.path || null;
   if (cfPath) {
     wrapper.setAttribute(
@@ -177,39 +150,28 @@ function renderArticle(block, article, cfg) {
   const body = document.createElement('div');
   body.className = 'content-fragment-body';
 
-  // Hero image
   if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
     const img = document.createElement('img');
     img.className = 'content-fragment-image';
     img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
     img.alt = article.headline || '';
-
-    // UE: make hero image editable as a media field on the CF
     img.setAttribute('data-aue-prop', 'heroImage');
     img.setAttribute('data-aue-type', 'media');
-
     media.appendChild(img);
   }
 
-  // Headline
   if (article.headline) {
     const h2 = document.createElement('h2');
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
-
-    // UE: make headline in-place editable as simple text
     h2.setAttribute('data-aue-prop', 'headline');
     h2.setAttribute('data-aue-type', 'text');
-
     body.appendChild(h2);
   }
 
-  // Main body (from Content Fragment "main" element)
   if (article.main) {
     const mainEl = document.createElement('div');
     mainEl.className = 'content-fragment-main';
-
-    // UE: map to the CF field "main" as rich text
     mainEl.setAttribute('data-aue-prop', 'main');
     mainEl.setAttribute('data-aue-type', 'richtext');
 
@@ -226,7 +188,6 @@ function renderArticle(block, article, cfg) {
     body.appendChild(mainEl);
   }
 
-  // Optional CTA – expects article.ctaLabel + article.ctaUrl (adapt to your model)
   if (article.ctaLabel && article.ctaUrl) {
     const ctaWrapper = document.createElement('div');
     ctaWrapper.className = 'content-fragment-cta';
@@ -236,12 +197,10 @@ function renderArticle(block, article, cfg) {
     cta.href = article.ctaUrl;
     cta.textContent = article.ctaLabel;
 
-    // Map UE config (line 5) to CSS variants, e.g. "cta-link", "cta-primary", "cta-secondary"
     if (ctaStyle) {
       cta.classList.add(ctaStyle);
     }
 
-    // UE: make CTA editable as a link field if mapped in your model
     cta.setAttribute('data-aue-prop', 'ctaUrl');
     cta.setAttribute('data-aue-type', 'hyperlink');
 

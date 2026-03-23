@@ -625,22 +625,20 @@ main .default-content-wrapper:has(> #want-roadside-assistance) .button-container
 
 
 
-/* nur für die Rating-Section */
-.section.dark-blue.claims-rating .default-content-wrapper > p:first-child picture img {
+/* Sterne-Bild im ersten Absatz der dark-blue-Section verkleinern */
+.section.dark-blue .default-content-wrapper p:first-of-type picture img {
   max-height: 32px;
   height: auto;
   width: auto;
 }
 
-/* optional: Text und Sterne schön ausrichten */
-.section.dark-blue.claims-rating .default-content-wrapper {
+/* Optional: Text und Sterne enger zusammen */
+.section.dark-blue .default-content-wrapper {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
-.section.dark-blue.claims-rating .default-content-wrapper > p:first-child {
+.section.dark-blue .default-content-wrapper p {
   margin: 0;
 }
-.section.dark-blue.claims-rating .default-content-wrapper > p:nth-child(2) {
-  margin: 0;
-}
+

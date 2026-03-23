@@ -622,3 +622,25 @@ main .default-content-wrapper:has(> #want-roadside-assistance) .button-container
     grid-column: 2;
   }
 }
+
+
+
+/* nur für die Rating-Section */
+.section.dark-blue.claims-rating .default-content-wrapper > p:first-child picture img {
+  max-height: 32px;
+  height: auto;
+  width: auto;
+}
+
+/* optional: Text und Sterne schön ausrichten */
+.section.dark-blue.claims-rating .default-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.section.dark-blue.claims-rating .default-content-wrapper > p:first-child {
+  margin: 0;
+}
+.section.dark-blue.claims-rating .default-content-wrapper > p:nth-child(2) {
+  margin: 0;
+}

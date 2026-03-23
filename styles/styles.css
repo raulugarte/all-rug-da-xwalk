@@ -623,22 +623,3 @@ main .default-content-wrapper:has(> #want-roadside-assistance) .button-container
   }
 }
 
-
-
-/* Sterne-Bild im ersten Absatz der dark-blue-Section verkleinern */
-.section.dark-blue .default-content-wrapper p:first-of-type picture img {
-  max-height: 32px;
-  height: auto;
-  width: auto;
-}
-
-/* Optional: Text und Sterne enger zusammen */
-.section.dark-blue .default-content-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.section.dark-blue .default-content-wrapper p {
-  margin: 0;
-}
-

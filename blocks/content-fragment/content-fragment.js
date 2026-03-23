@@ -1,32 +1,84 @@
-const HOSTNAME = window.location.hostname;
-
-// Umgebung erkennen
-const IS_AEM_CLOUD = HOSTNAME.endsWith('.adobeaemcloud.com'); // author/publish
-const IS_EDS = HOSTNAME.endsWith('.aem.page') || HOSTNAME.endsWith('.aem.live');
-
-// Fester Publish-Host für dieses Projekt (für EDS)
-const PUBLISH_HOST = 'https://publish-p130407-e1279066.adobeaemcloud.com';
-
-// Gemeinsamer GraphQL-Pfad
+const PUBLISH_BASE_URL = 'https://publish-p130407-e1279066.adobeaemcloud.com';
 const GRAPHQL_PATH = '/graphql/execute.json/securbank/ArticleByPath';
 
-// Endpoint je nach Umgebung:
-// - AEM (Author/Publish): same-origin, relativer Pfad
-// - EDS (.aem.page/.aem.live): absoluter Publish-Host
-const GRAPHQL_ENDPOINT = IS_EDS ? `${PUBLISH_HOST}${GRAPHQL_PATH}` : GRAPHQL_PATH;
+/**
+ * Erkennung der Laufzeit-Umgebung
+ */
+function isAemHost() {
+  const { hostname } = window.location;
+  return hostname.endsWith('adobeaemcloud.com');
+}
+
+function isEdsHost() {
+  const { hostname } = window.location;
+  return hostname.endsWith('.aem.page') || hostname.endsWith('.aem.live');
+}
+
+/**
+ * GraphQL-Endpoint je nach Umgebung:
+ * - AEM (Author/Publish Console): relativer Pfad (same-origin)
+ * - Edge Delivery (.aem.page / .aem.live): absoluter Publish-Endpoint
+ */
+function getGraphQLEndpoint() {
+  if (isAemHost()) {
+    // Author/Publish → relative URL, z.B. https://author-.../graphql/execute.json/...
+    return GRAPHQL_PATH;
+  }
+  if (isEdsHost()) {
+    // EDS → gegen Publish-Host
+    return `${PUBLISH_BASE_URL}${GRAPHQL_PATH}`;
+  }
+  // Fallback: relativ
+  return GRAPHQL_PATH;
+}
+
+const GRAPHQL_ENDPOINT = getGraphQLEndpoint();
+
+/**
+ * Bild-URL normalisieren:
+ * - absolute URLs bleiben unverändert
+ * - relative /adobe/dynamicmedia/... werden auf Publish gemappt, wenn wir auf EDS laufen
+ * - andere relative URLs können bei Bedarf ebenfalls auf Publish gemappt werden
+ */
+function resolveImageUrl(rawUrl) {
+  if (!rawUrl) {
+    return null;
+  }
+
+  // Schon absolute URL?
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    return rawUrl;
+  }
+
+  // Nur auf EDS müssen wir relative Pfade auf den Publish-Host biegen
+  if (isEdsHost()) {
+    if (rawUrl.startsWith('/adobe/dynamicmedia/')) {
+      // Dynamic Media-Delivery über Publish
+      return `${PUBLISH_BASE_URL}${rawUrl}`;
+    }
+
+    if (rawUrl.startsWith('/')) {
+      // Sonstige relative Pfade bei Bedarf ebenfalls über Publish ausliefern
+      return `${PUBLISH_BASE_URL}${rawUrl}`;
+    }
+  }
+
+  // Auf AEM-Hosts (Author/Publish) relativ belassen (same-origin)
+  return rawUrl;
+}
 
 /**
  * Parse the block text into:
  * - path           (line 1)
- * - variation      (line 2, optional – falls das Query ein $variation hat)
+ * - variation      (line 2, required for GraphQL)
  * - displayStyle   (line 3, optional)
  * - alignment      (line 4, optional)
- * - ctaStyle       (line 5, optional – z.B. "cta-link", "cta-primary")
+ * - ctaStyle       (line 5, optional – e.g. "cta-link", "cta-primary")
  *
  * Expected format:
  *
  * /content/dam/.../allianz-offer      ← line 1: path
- * default                             ← line 2: variation (optional)
+ * default                             ← line 2: variation
  * image-left                          ← line 3: style
  * text-left                           ← line 4: alignment
  * cta-primary                         ← line 5: CTA style
@@ -57,12 +109,10 @@ function getBlockConfig(block) {
 }
 
 /**
- * Fetch CSRF token auf Author (für POST erforderlich).
- * Auf Publish oder Nicht-AEM-Domains wird einfach null zurückgegeben.
+ * Fetch CSRF token nur auf AEM-Hosts (Author/Publish) – auf EDS gibt es das nicht.
  */
 async function getCsrfToken() {
-  if (!IS_AEM_CLOUD) {
-    // Auf EDS / anderen Hosts kein CSRF-Token nötig / verfügbar
+  if (!isAemHost()) {
     return null;
   }
 
@@ -77,7 +127,7 @@ async function getCsrfToken() {
     const data = await resp.json();
     return data.token || null;
   } catch (e) {
-    // Nicht fatal; z.B. auf Publish ohne CSRF-Setup
+    // Nicht fatal – kann z.B. auf Publish/EDS fehlen
     return null;
   }
 }
@@ -89,57 +139,43 @@ async function getCsrfToken() {
  * {
  *   "variables": {
  *     "path": "...",
- *     "variation": "..."  // optional
+ *     "variation": "..."
  *   }
  * }
  */
 async function fetchArticle(path, variation) {
-  const variables = { path };
-
-  // Nur setzen, wenn tatsächlich vorhanden (damit Default aus dem Query greifen kann)
-  if (variation) {
-    variables.variation = variation;
-  }
-
-  const body = { variables };
+  const body = {
+    variables: {
+      path,
+      variation,
+    },
+  };
 
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
 
-  // CSRF nur auf AEM-Hosts versuchen
+  // CSRF-Token nur auf AEM (Author/Publish) notwendig
   const token = await getCsrfToken();
   if (token) {
     headers['CSRF-Token'] = token;
   }
 
-  const fetchOptions = {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  };
-
-  // Auf AEM same-origin, auf EDS keine Credentials nötig
-  if (IS_AEM_CLOUD) {
-    fetchOptions.credentials = 'same-origin';
-  } else {
-    fetchOptions.credentials = 'omit';
-  }
-
   try {
-    const resp = await fetch(GRAPHQL_ENDPOINT, fetchOptions);
+    const resp = await fetch(GRAPHQL_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      credentials: isAemHost() ? 'same-origin' : 'omit',
+      cache: 'no-store',
+    });
 
     if (!resp.ok) {
       console.error(
         'content-fragment: GraphQL request failed',
         resp.status,
         resp.statusText,
-        'endpoint:',
-        GRAPHQL_ENDPOINT,
-        'body:',
-        body,
       );
       return null;
     }
@@ -153,13 +189,13 @@ async function fetchArticle(path, variation) {
 
     const item = json?.data?.articleByPath?.item;
     if (!item) {
-      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation || 'default'})`);
+      console.warn(`content-fragment: no article returned for ${path} (variation: ${variation})`);
       return null;
     }
 
     return item;
   } catch (e) {
-    console.error('content-fragment: fetch failed', e, 'endpoint:', GRAPHQL_ENDPOINT);
+    console.error('content-fragment: fetch failed', e);
     return null;
   }
 }
@@ -177,11 +213,9 @@ function renderArticle(block, article, cfg) {
   block.classList.add('content-fragment');
 
   // Apply Style + Alignment from UE as CSS classes
-  // e.g. "image-left", "image-right", "image-top"
   if (displayStyle) {
     block.classList.add(displayStyle);
   }
-  // e.g. "text-left", "text-center", "text-right"
   if (alignment) {
     block.classList.add(alignment);
   }
@@ -192,8 +226,8 @@ function renderArticle(block, article, cfg) {
   /**
    * Universal Editor instrumentation
    *
-   * Für Content Fragments muss der Resource-Pfad immer auf
-   * /jcr:content/data/master zeigen – Variationen werden von den CF-APIs gehandhabt.
+   * Für Content Fragments muss die Resource immer auf
+   * /jcr:content/data/master zeigen – Variationen übernimmt die CF-API.
    */
   const cfPath = article._path || cfg.path || null;
   if (cfPath) {
@@ -212,13 +246,16 @@ function renderArticle(block, article, cfg) {
   body.className = 'content-fragment-body';
 
   // Hero image
-  if (article.heroImage?._dynamicUrl || article.heroImage?._publishUrl) {
+  const rawImageUrl = article.heroImage?._dynamicUrl || article.heroImage?._publishUrl;
+  const imgUrl = resolveImageUrl(rawImageUrl);
+
+  if (imgUrl) {
     const img = document.createElement('img');
     img.className = 'content-fragment-image';
-    img.src = article.heroImage._dynamicUrl || article.heroImage._publishUrl;
+    img.src = imgUrl;
     img.alt = article.headline || '';
 
-    // UE: make hero image editable as a media field on the CF
+    // UE: hero image als Media-Feld auf dem CF editierbar machen
     img.setAttribute('data-aue-prop', 'heroImage');
     img.setAttribute('data-aue-type', 'media');
 
@@ -231,7 +268,7 @@ function renderArticle(block, article, cfg) {
     h2.className = 'content-fragment-headline';
     h2.textContent = article.headline;
 
-    // UE: make headline in-place editable as simple text
+    // UE: Headline als einfachen Text editierbar machen
     h2.setAttribute('data-aue-prop', 'headline');
     h2.setAttribute('data-aue-type', 'text');
 
@@ -270,12 +307,12 @@ function renderArticle(block, article, cfg) {
     cta.href = article.ctaUrl;
     cta.textContent = article.ctaLabel;
 
-    // Map UE config (line 5) to CSS variants, e.g. "cta-link", "cta-primary", "cta-secondary"
+    // UE: Style aus Zeile 5 (z.B. "cta-primary", "cta-secondary")
     if (ctaStyle) {
       cta.classList.add(ctaStyle);
     }
 
-    // UE: make CTA editable as a link field if mapped in your model
+    // UE: CTA als Link-Feld editierbar machen
     cta.setAttribute('data-aue-prop', 'ctaUrl');
     cta.setAttribute('data-aue-type', 'hyperlink');
 
@@ -299,9 +336,10 @@ export default async function decorate(block) {
   }
 
   if (!cfg.variation) {
-    console.info(
-      'content-fragment: no variation provided; relying on default from persisted query (if defined).',
+    console.warn(
+      'content-fragment: no variation (second line) found, skipping fetch because $variation is String!',
     );
+    return;
   }
 
   const article = await fetchArticle(cfg.path, cfg.variation);

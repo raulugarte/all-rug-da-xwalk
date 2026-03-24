@@ -118,7 +118,8 @@ function getDirectTextContent(menuItem) {
 async function buildBreadcrumbsFromNavTree(nav, currentUrl) {
   const crumbs = [];
 
-  const homeUrl = document.querySelector('.nav-brand a[href]').href;
+  const homeBrandLink = document.querySelector('.nav-brand a[href]');
+  const homeUrl = homeBrandLink ? homeBrandLink.href : '/';
 
   let menuItem = Array.from(nav.querySelectorAll('a')).find((a) => a.href === currentUrl);
   if (menuItem) {
@@ -148,7 +149,10 @@ async function buildBreadcrumbs() {
   const breadcrumbs = document.createElement('nav');
   breadcrumbs.className = 'breadcrumbs';
 
-  const crumbs = await buildBreadcrumbsFromNavTree(document.querySelector('.nav-sections'), document.location.href);
+  const crumbs = await buildBreadcrumbsFromNavTree(
+    document.querySelector('.nav-sections'),
+    document.location.href,
+  );
 
   const ol = document.createElement('ol');
   ol.append(...crumbs.map((item) => {
@@ -191,11 +195,41 @@ export default async function decorate(block) {
     if (section) section.classList.add(`nav-${c}`);
   });
 
+  // BRAND / LOGO HANDLING
   const navBrand = nav.querySelector('.nav-brand');
-  const brandLink = navBrand.querySelector('.button');
-  if (brandLink) {
-    brandLink.className = '';
-    brandLink.closest('.button-container').className = '';
+  if (navBrand) {
+    // Preserve existing behavior for button-style brand links
+    const brandButtonLink = navBrand.querySelector('.button');
+    if (brandButtonLink) {
+      brandButtonLink.className = '';
+      const btnContainer = brandButtonLink.closest('.button-container');
+      if (btnContainer) btnContainer.className = '';
+    }
+
+    // Ensure there is an <a> around the logo (picture/img)
+    let brandLink = navBrand.querySelector('a[href]');
+    if (!brandLink) {
+      const pictureOrImg = navBrand.querySelector('picture, img');
+      if (pictureOrImg) {
+        brandLink = document.createElement('a');
+        // Default home URL as relative root; works on both author and publish
+        brandLink.href = '/';
+        pictureOrImg.parentNode.insertBefore(brandLink, pictureOrImg);
+        brandLink.appendChild(pictureOrImg);
+      }
+    }
+
+    // Normalize any absolute link to a relative path (strip host + /index.html)
+    if (brandLink) {
+      try {
+        const url = new URL(brandLink.href, window.location.origin);
+        let path = url.pathname.replace(/index\.html$/, '');
+        if (!path) path = '/';
+        brandLink.href = path;
+      } catch (e) {
+        // If URL parsing fails, leave the href as-is
+      }
+    }
   }
 
   const navSections = nav.querySelector('.nav-sections');

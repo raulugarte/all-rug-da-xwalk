@@ -115,11 +115,34 @@ function getDirectTextContent(menuItem) {
     .join(' ');
 }
 
+/**
+ * Derive the "home" path based on the current location.
+ * - On author/preview (*.adobeaemcloud.com): /content/<site>/index.html
+ * - On publish: /
+ */
+function getHomePathFromLocation() {
+  const { hostname, pathname } = window.location;
+
+  // Author / preview environments
+  if (hostname.endsWith('adobeaemcloud.com')) {
+    // Example: /content/all-rug-da-xwalk/index.html or /content/all-rug-da-xwalk/en/page.html
+    const parts = pathname.split('/').filter((p) => p);
+    const contentIdx = parts.indexOf('content');
+    if (contentIdx !== -1 && parts.length > contentIdx + 1) {
+      const siteRoot = parts[contentIdx + 1];
+      return `/content/${siteRoot}/index.html`;
+    }
+  }
+
+  // Default: site root on publish
+  return '/';
+}
+
 async function buildBreadcrumbsFromNavTree(nav, currentUrl) {
   const crumbs = [];
 
-  const homeBrandLink = document.querySelector('.nav-brand a[href]');
-  const homeUrl = homeBrandLink ? homeBrandLink.href : '/';
+  const brandAnchor = document.querySelector('.nav-brand a[href]');
+  const homeUrl = brandAnchor ? brandAnchor.href : window.location.origin;
 
   let menuItem = Array.from(nav.querySelectorAll('a')).find((a) => a.href === currentUrl);
   if (menuItem) {
@@ -195,40 +218,32 @@ export default async function decorate(block) {
     if (section) section.classList.add(`nav-${c}`);
   });
 
-  // BRAND / LOGO HANDLING
   const navBrand = nav.querySelector('.nav-brand');
-  if (navBrand) {
-    // Preserve existing behavior for button-style brand links
-    const brandButtonLink = navBrand.querySelector('.button');
-    if (brandButtonLink) {
-      brandButtonLink.className = '';
-      const btnContainer = brandButtonLink.closest('.button-container');
-      if (btnContainer) btnContainer.className = '';
-    }
+  const brandButtonLink = navBrand ? navBrand.querySelector('.button') : null;
+  if (brandButtonLink) {
+    brandButtonLink.className = '';
+    const btnContainer = brandButtonLink.closest('.button-container');
+    if (btnContainer) btnContainer.className = '';
+  }
 
-    // Ensure there is an <a> around the logo (picture/img)
+  // Ensure brand/logo is a link and points to the correct "home" URL per environment
+  if (navBrand) {
     let brandLink = navBrand.querySelector('a[href]');
     if (!brandLink) {
+      // Wrap picture/img in an <a> if there isn't one yet
       const pictureOrImg = navBrand.querySelector('picture, img');
       if (pictureOrImg) {
         brandLink = document.createElement('a');
-        // Default home URL as relative root; works on both author and publish
-        brandLink.href = '/';
-        pictureOrImg.parentNode.insertBefore(brandLink, pictureOrImg);
+        const wrapper = navBrand.querySelector('.default-content-wrapper') || navBrand;
+        wrapper.insertBefore(brandLink, pictureOrImg);
         brandLink.appendChild(pictureOrImg);
       }
     }
 
-    // Normalize any absolute link to a relative path (strip host + /index.html)
     if (brandLink) {
-      try {
-        const url = new URL(brandLink.href, window.location.origin);
-        let path = url.pathname.replace(/index\.html$/, '');
-        if (!path) path = '/';
-        brandLink.href = path;
-      } catch (e) {
-        // If URL parsing fails, leave the href as-is
-      }
+      // Compute environment-aware home path
+      const homePath = getHomePathFromLocation();
+      brandLink.href = homePath;
     }
   }
 
@@ -246,7 +261,8 @@ export default async function decorate(block) {
     });
     navSections.querySelectorAll('.button-container').forEach((buttonContainer) => {
       buttonContainer.classList.remove('button-container');
-      buttonContainer.querySelector('.button').classList.remove('button');
+      const btn = buttonContainer.querySelector('.button');
+      if (btn) btn.classList.remove('button');
     });
   }
 
@@ -283,7 +299,8 @@ export default async function decorate(block) {
   navWrapper.append(nav);
   block.append(navWrapper);
 
-  if (getMetadata('breadcrumbs').toLowerCase() === 'true') {
+  const breadcrumbsMeta = getMetadata('breadcrumbs');
+  if (breadcrumbsMeta && breadcrumbsMeta.toLowerCase() === 'true') {
     navWrapper.append(await buildBreadcrumbs());
   }
 }

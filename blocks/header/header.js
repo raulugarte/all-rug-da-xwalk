@@ -5,6 +5,26 @@ import { loadFragment } from '../fragment/fragment.js';
 // media query match that indicates mobile/tablet width
 const isDesktop = window.matchMedia('(min-width: 900px)');
 
+/**
+ * Computes the "home" URL for the logo:
+ * - On author/preview (adobeaemcloud.com): /content/<site>/index.html
+ * - On publish (e.g. *.aem.page): /
+ */
+function getHomeHref() {
+  const { origin, pathname } = window.location;
+
+  // Author/preview: keep the /content/<site>/index.html pattern
+  if (origin.includes('adobeaemcloud.com')) {
+    // Match /content/<site> from the current path
+    const match = pathname.match(/^\/content\/[^/]+/);
+    const siteRoot = match ? match[0] : '/content';
+    return `${siteRoot}/index.html`;
+  }
+
+  // Publish / public domain: site root
+  return '/';
+}
+
 function closeOnEscape(e) {
   if (e.code === 'Escape') {
     const nav = document.getElementById('nav');
@@ -115,34 +135,11 @@ function getDirectTextContent(menuItem) {
     .join(' ');
 }
 
-/**
- * Derive the "home" path based on the current location.
- * - On author/preview (*.adobeaemcloud.com): /content/<site>/index.html
- * - On publish: /
- */
-function getHomePathFromLocation() {
-  const { hostname, pathname } = window.location;
-
-  // Author / preview environments
-  if (hostname.endsWith('adobeaemcloud.com')) {
-    // Example: /content/all-rug-da-xwalk/index.html or /content/all-rug-da-xwalk/en/page.html
-    const parts = pathname.split('/').filter((p) => p);
-    const contentIdx = parts.indexOf('content');
-    if (contentIdx !== -1 && parts.length > contentIdx + 1) {
-      const siteRoot = parts[contentIdx + 1];
-      return `/content/${siteRoot}/index.html`;
-    }
-  }
-
-  // Default: site root on publish
-  return '/';
-}
-
 async function buildBreadcrumbsFromNavTree(nav, currentUrl) {
   const crumbs = [];
 
-  const brandAnchor = document.querySelector('.nav-brand a[href]');
-  const homeUrl = brandAnchor ? brandAnchor.href : window.location.origin;
+  const homeUrlElement = document.querySelector('.nav-brand a[href]');
+  const homeUrl = homeUrlElement ? homeUrlElement.href : getHomeHref();
 
   let menuItem = Array.from(nav.querySelectorAll('a')).find((a) => a.href === currentUrl);
   if (menuItem) {
@@ -172,10 +169,7 @@ async function buildBreadcrumbs() {
   const breadcrumbs = document.createElement('nav');
   breadcrumbs.className = 'breadcrumbs';
 
-  const crumbs = await buildBreadcrumbsFromNavTree(
-    document.querySelector('.nav-sections'),
-    document.location.href,
-  );
+  const crumbs = await buildBreadcrumbsFromNavTree(document.querySelector('.nav-sections'), document.location.href);
 
   const ol = document.createElement('ol');
   ol.append(...crumbs.map((item) => {
@@ -219,31 +213,37 @@ export default async function decorate(block) {
   });
 
   const navBrand = nav.querySelector('.nav-brand');
-  const brandButtonLink = navBrand ? navBrand.querySelector('.button') : null;
-  if (brandButtonLink) {
-    brandButtonLink.className = '';
-    const btnContainer = brandButtonLink.closest('.button-container');
-    if (btnContainer) btnContainer.className = '';
-  }
-
-  // Ensure brand/logo is a link and points to the correct "home" URL per environment
   if (navBrand) {
+    const homeHref = getHomeHref();
+
+    // If there is a button-styled link from authored nav, normalize classes
+    const buttonBrandLink = navBrand.querySelector('.button');
+    if (buttonBrandLink) {
+      buttonBrandLink.className = '';
+      const buttonContainer = buttonBrandLink.closest('.button-container');
+      if (buttonContainer) buttonContainer.className = '';
+    }
+
+    // Ensure the logo (picture/img) is wrapped in a link
     let brandLink = navBrand.querySelector('a[href]');
     if (!brandLink) {
-      // Wrap picture/img in an <a> if there isn't one yet
-      const pictureOrImg = navBrand.querySelector('picture, img');
-      if (pictureOrImg) {
-        brandLink = document.createElement('a');
-        const wrapper = navBrand.querySelector('.default-content-wrapper') || navBrand;
-        wrapper.insertBefore(brandLink, pictureOrImg);
-        brandLink.appendChild(pictureOrImg);
+      const visual = navBrand.querySelector('picture, img');
+      if (visual && visual.parentNode) {
+        const parent = visual.parentNode;
+        const link = document.createElement('a');
+        link.href = homeHref;
+
+        // Replace visual with link, then move visual inside link
+        parent.replaceChild(link, visual);
+        link.appendChild(visual);
+
+        brandLink = link;
       }
     }
 
+    // If a link exists, enforce our computed home href
     if (brandLink) {
-      // Compute environment-aware home path
-      const homePath = getHomePathFromLocation();
-      brandLink.href = homePath;
+      brandLink.href = homeHref;
     }
   }
 
@@ -299,8 +299,7 @@ export default async function decorate(block) {
   navWrapper.append(nav);
   block.append(navWrapper);
 
-  const breadcrumbsMeta = getMetadata('breadcrumbs');
-  if (breadcrumbsMeta && breadcrumbsMeta.toLowerCase() === 'true') {
+  if (getMetadata('breadcrumbs').toLowerCase() === 'true') {
     navWrapper.append(await buildBreadcrumbs());
   }
 }
